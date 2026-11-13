@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="tr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AÖF Akıllı Soru Havuzu & Sınav Çalışma Sistemi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Smooth animations for solution box and card hiding */
+        .solution-enter {
+            animation: slideDown 0.22s ease-out forwards;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card-transition {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigation & Course Selector Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <!-- Brand & Active Course Info -->
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-lg font-bold text-slate-900 tracking-tight">AÖF Akıllı Soru Havuzu</h1>
+                            <span id="roundBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                                1. Çözüm Turu
+                            </span>
+                            <button onclick="toggleBackupModal(true)" id="cloudSyncBadge" class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition cursor-pointer" title="Kalıcı Hafıza Durumu ve Yedekleme Merkezi">
+                                <i class="fa-solid fa-hard-drive text-[10px]"></i>
+                                <span id="cloudSyncText">Kalıcı Hafıza Aktif</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-500">Eklediğin her soru cihaz hafızasına (IndexedDB + LocalStorage) anında kaydedilir; ne zaman açarsan kaldığın yerden devam eder</p>
+                    </div>
+                </div>
+
+                <!-- Course & JSON Question Upload Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Course Selector -->
+                    <div class="relative">
+                        <select id="courseSelect" onchange="handleCourseChange()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            <!-- Populated dynamically -->
+                        </select>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+
+                    <!-- Add JSON Button -->
+                    <button onclick="toggleAddQuestionModal(true)" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer" title="JSON Dosyası veya Metni ile Yeni Soru Ekle">
+                        <i class="fa-solid fa-file-code"></i>
+                        <span>JSON Soru Ekle</span>
+                    </button>
+
+                    <!-- Backup & App Export Modal Button -->
+                    <button onclick="toggleBackupModal(true)" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl transition cursor-pointer" title="Yedekleme ve Uygulama Veri Merkezi">
+                        <i class="fa-solid fa-database text-emerald-600"></i>
+                        <span class="hidden sm:inline">Veri & Yedek</span>
+                    </button>
+
+                    <!-- Answer Key Modal Button -->
+                    <button onclick="toggleAnswerKeyModal(true)" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl transition cursor-pointer" title="Cevap Anahtarı Tablosu">
+                        <i class="fa-solid fa-key text-amber-600"></i>
+                        <span class="hidden sm:inline">Cevap Anahtarı</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Progress & Round Control Bar -->
+            <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <!-- Filter Pills -->
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+                    <button onclick="setFilterMode('active')" id="filterBtn-active" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-indigo-600 text-white shadow-sm">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>Sorular</span>
+                        <span id="count-active" class="px-1.5 py-0.5 rounded-md bg-indigo-800/60 text-white text-[11px]">20</span>
+                    </button>
+
+                    <button onclick="setFilterMode('needsReview')" id="filterBtn-needsReview" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200" title="Yanlış işaretlenen sorular">
+                        <i class="fa-solid fa-circle-xmark text-rose-500"></i>
+                        <span>Yanlış</span>
+                        <span id="count-needsReview" class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px]">0</span>
+                    </button>
+
+                    <button onclick="setFilterMode('hidden')" id="filterBtn-hidden" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                        <i class="fa-solid fa-eye-slash text-emerald-600"></i>
+                        <span>Öğrenilenler</span>
+                        <span id="count-hidden" class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px]">0</span>
+                    </button>
+
+                    <button onclick="setFilterMode('all')" id="filterBtn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Tümü</span>
+                        <span id="count-all" class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px]">20</span>
+                    </button>
+                </div>
+
+                <!-- Smart Study Actions -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="autoHideSelfSolved()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition flex items-center gap-1.5" title="Çözüme bakmadan doğru işaretlediğin tüm soruları tek tıkla gizler">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Çözümsüz Doğruları Gizle</span>
+                    </button>
+
+                    <button onclick="startNextStudyRound()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition flex items-center gap-1.5" title="Gizlenen soruları korur, kalan soruların şık işaretlerini temizleyip yeni tur başlatır">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Sonraki Tura Geç (Kalanları Baştan Çöz)</span>
+                    </button>
+
+                    <button onclick="openResetModal()" class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition" title="Tüm gizlemeleri ve işaretleri sıfırla">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
+
+        <!-- Quick Question Jump Palette -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 mb-6 shadow-sm">
+            <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-compass text-indigo-600"></i>
+                    Hızlı Soru Gezgini
+                </span>
+                <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Çözümsüz Doğru</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Çözüme Bakıldı</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Yanlış</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block"></span> Gizlendi</span>
+                </div>
+            </div>
+            <div id="questionJumpGrid" class="flex flex-wrap gap-1.5">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Questions Container -->
+        <div id="questionsContainer" class="space-y-5">
+            <!-- Question Cards Rendered Here -->
+        </div>
+
+        <!-- Empty State (When all questions are hidden or filtered out) -->
+        <div id="emptyStateContainer" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center shadow-sm my-6">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3 id="emptyStateTitle" class="text-xl font-bold text-slate-900 mb-2">Harika! Bu Görünümde Soru Kalmadı</h3>
+            <p id="emptyStateDesc" class="text-sm text-slate-600 max-w-md mx-auto mb-6">
+                Tüm soruları gizledin veya bu filtreye uygun soru bulunmuyor. Gizlenen soruları tekrar açabilir ya da tüm soruları görüntüleyebilirsin.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <button onclick="setFilterMode('all')" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">
+                    <i class="fa-solid fa-list mr-1.5"></i> Tüm Soruları Göster
+                </button>
+                <button onclick="setFilterMode('hidden')" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">
+                    <i class="fa-solid fa-eye-slash mr-1.5"></i> Öğrenilen Soruları İncele
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Info for Expanding the Pool -->
+    <footer class="bg-white border-t border-slate-200 mt-10 py-5">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span><strong>Çift Katmanlı Kalıcı Hafıza:</strong> Eklediğiniz tüm sorular hem cihaz veritabanına (IndexedDB + LocalStorage) hem de buluta otomatik kaydedilir.</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span>Aktif Havuz: <strong id="footerPoolInfo" class="text-slate-700">İstatistik (20 Soru)</strong></span>
+                <button onclick="toggleBackupModal(true)" class="text-indigo-600 hover:underline font-semibold cursor-pointer">Yedek İndir / Geri Yükle</button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="fixed bottom-5 right-5 z-50 hidden transform transition-all duration-300">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-xs sm:text-sm font-medium border border-slate-700">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+            <span id="toastMessage">İşlem tamamlandı</span>
+            <button id="toastUndoBtn" class="hidden ml-2 px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-amber-300 font-semibold text-xs transition">
+                Geri Al
+            </button>
+        </div>
+    </div>
+
+    <!-- Official Answer Key Modal -->
+    <div id="answerKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-key text-amber-500"></i>
+                        <span id="modalExamTitle">Resmi Cevap Anahtarı</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Seçili ders havuzundaki tüm soruların cevap anahtarı tablosu</p>
+                </div>
+                <button onclick="toggleAnswerKeyModal(false)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="answerKeyGrid" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 my-5">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="flex justify-end">
+                <button onclick="toggleAnswerKeyModal(false)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data & Backup Center Modal (Kalıcı Hafıza ve Uygulama Taşıma Merkezi) -->
+    <div id="backupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-xs">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900">Kalıcı Hafıza & Uygulama Veri Merkezi</h3>
+                        <p class="text-xs text-slate-500">Eklediğiniz sorular otomatik olarak kaydedilir. Ayrıca tek tıkla yedek alabilir veya başka cihaza/uygulamaya taşıyabilirsiniz.</p>
+                    </div>
+                </div>
+                <button onclick="toggleBackupModal(false)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Storage Stats Summary -->
+            <div class="grid grid-cols-3 gap-3 my-4">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                    <div class="text-[11px] font-semibold text-slate-500">Toplam Ders</div>
+                    <div id="statTotalCourses" class="text-xl font-extrabold text-indigo-600 mt-0.5">1</div>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                    <div class="text-[11px] font-semibold text-slate-500">Toplam Soru</div>
+                    <div id="statTotalQuestions" class="text-xl font-extrabold text-slate-900 mt-0.5">20</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <div class="text-[11px] font-semibold text-emerald-700">Senin Eklediğin</div>
+                    <div id="statCustomQuestions" class="text-xl font-extrabold text-emerald-700 mt-0.5">0</div>
+                </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-950 mb-4 space-y-1">
+                <div class="font-bold flex items-center gap-1.5 text-indigo-800">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>3 Katmanlı Otomatik Kayıt Sistemi Çalışıyor</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed">
+                    Eklediğiniz her soru ve çözdüğünüz her şık anında <strong>1) IndexedDB (Uygulama Veritabanı)</strong>, <strong>2) LocalStorage (Tarayıcı Hafızası)</strong> ve <strong>3) Bulut Senkronizasyonu</strong> üzerine eşzamanlı kaydedilir. Sayfayı kapatsanız veya uygulamaya çevirseniz bile verileriniz silinmez.
+                </p>
+            </div>
+
+            <!-- Export & Import Actions -->
+            <div class="space-y-3">
+                <div class="p-4 rounded-xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">Tüm Soru Havuzunu ve İlerlemeyi İndir (.json)</h4>
+                        <p class="text-xs text-slate-500">Uygulamaya çevirirken veya başka cihaza geçerken tüm derslerinizi, sorularınızı ve çözüm durumunuzu tek dosyada indirir.</p>
+                    </div>
+                    <button onclick="exportFullDatabaseBackup()" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shrink-0 flex items-center justify-center gap-2 transition cursor-pointer shadow-xs">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Yedeği İndir</span>
+                    </button>
+                </div>
+
+                <div class="p-4 rounded-xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">Yedek Dosyasını Geri Yükle (.json)</h4>
+                        <p class="text-xs text-slate-500">Daha önce indirdiğiniz yedek dosyasını seçerek tüm soruları ve ilerlemeyi anında geri yükleyin.</p>
+                    </div>
+                    <input type="file" id="backupRestoreInput" accept=".json,application/json" class="hidden" onchange="importFullDatabaseBackup(event)">
+                    <label for="backupRestoreInput" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 flex items-center justify-center gap-2 transition cursor-pointer shadow-xs">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Yedek Yükle</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span id="lastSavedTimeText" class="text-[11px] text-slate-400 font-medium">Son otomatik kayıt: Az önce</span>
+                <button onclick="toggleBackupModal(false)" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold cursor-pointer">
+                    Tamam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add JSON Modal -->
+    <div id="addQuestionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg shadow-xs">
+                        <i class="fa-solid fa-file-code"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900">JSON ile Yeni Soru Ekle</h3>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Otomatik Kalıcı Kayıt</span>
+                        </div>
+                        <p class="text-xs text-slate-500">.json dosyası seçebilir veya hazırladığınız JSON verisini doğrudan aşağıya yapıştırabilirsiniz</p>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleAddQuestionModal(false)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Target Course Selection -->
+            <div class="my-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <label class="block text-xs font-bold text-slate-700">1. Soruların Ekleneceği Dersi Seçin</label>
+                    <label class="inline-flex items-center gap-2 text-xs font-semibold text-indigo-700 cursor-pointer select-none">
+                        <input type="checkbox" id="autoIncludeToggle" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span>Önizleme yapmadan doğrudan derse ekle ve kaydet</span>
+                    </label>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2.5">
+                    <select id="addTargetCourseSelect" onchange="handleAddCourseSelectChange()" class="w-full sm:w-1/2 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <!-- Populated dynamically -->
+                    </select>
+                    <input id="newCourseNameInput" type="text" placeholder="Yeni Ders Adı (Örn: İŞLETME İLKELERİ)" class="hidden w-full sm:w-1/2 bg-white border border-indigo-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <!-- JSON File Upload & Paste Area -->
+            <div class="space-y-4">
+                <!-- Option A: File Upload Box -->
+                <div class="border-2 border-dashed border-indigo-300 bg-indigo-50/40 rounded-2xl p-5 text-center">
+                    <input type="file" id="jsonFileInput" accept=".json,application/json" multiple class="hidden" onchange="handleJsonFileUpload(event)">
+                    <div class="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-2.5 text-lg">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                    </div>
+                    <h4 class="text-sm sm:text-base font-bold text-slate-800 mb-1">2. JSON Dosyası Seçin veya Aşağıya Yapıştırın</h4>
+                    <p class="text-xs text-slate-500 mb-3.5 max-w-lg mx-auto">
+                        Birden fazla <strong>.json</strong> dosyası seçebilir ya da JSON formatındaki soruları alt kutuya yapıştırarak yükleyebilirsiniz.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-center gap-2">
+                        <label for="jsonFileInput" id="jsonSelectBtn" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition shadow-sm cursor-pointer inline-flex items-center gap-2 select-none">
+                            <i class="fa-solid fa-folder-open"></i>
+                            <span>JSON Dosyası Seç (.json)</span>
+                        </label>
+                        <button type="button" onclick="toggleSampleJsonBox()" class="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition inline-flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-code text-indigo-600"></i>
+                            <span>Örnek JSON Formatı</span>
+                        </button>
+                    </div>
+
+                    <!-- Sample JSON Format Helper -->
+                    <div id="sampleJsonBox" class="hidden mt-4 text-left bg-slate-900 text-slate-100 rounded-xl p-3.5 text-xs font-mono relative">
+                        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700">
+                            <span class="text-amber-300 font-sans font-bold text-[11px]">Desteklenen Örnek JSON Yapısı (Hem İngilizce hem Türkçe alan adları desteklenir)</span>
+                            <button type="button" onclick="copySampleJson()" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-sans font-semibold text-[11px] transition cursor-pointer">
+                                <i class="fa-regular fa-copy mr-1"></i> Örneği Kopyala
+                            </button>
+                        </div>
+                        <pre id="sampleJsonPre" class="overflow-x-auto text-[11px] leading-relaxed text-emerald-300">[
+  {
+    "unit": "Ünite 1: Giriş",
+    "text": "Aşağıdakilerden hangisi bir istatistik birimi örneğidir?",
+    "options": {
+      "A": "Türkiye'deki üniversite öğrencileri",
+      "B": "Soyut düşünceler",
+      "C": "Ölçülemeyen hayaller",
+      "D": "Belirsiz kavramlar",
+      "E": "Sayılamayan duygular"
+    },
+    "correctAnswer": "A",
+    "explanation": "Türkiye'deki üniversite öğrencileri sayılabilen ve ölçülebilen bir istatistik birimidir."
+  }
+]</pre>
+                    </div>
+                </div>
+
+                <!-- Option B: Direct JSON Paste Textarea -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 p-4">
+                    <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <label for="jsonPasteInput" class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-paste text-indigo-600"></i>
+                            <span>JSON Metnini Doğrudan Yapıştır</span>
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="clearJsonPasteInput()" class="text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition cursor-pointer">
+                                Temizle
+                            </button>
+                        </div>
+                    </div>
+                    <textarea
+                        id="jsonPasteInput"
+                        rows="5"
+                        placeholder='[ { "text": "Soru metni...", "options": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "..." }, "correctAnswer": "A", "explanation": "Çözüm açıklaması..." } ]'
+                        class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    ></textarea>
+                    <div class="mt-2.5 flex items-center justify-between flex-wrap gap-2">
+                        <div id="jsonUploadStatus" class="text-xs sm:text-sm font-semibold text-indigo-800 hidden"></div>
+                        <button type="button" onclick="handleJsonPasteParse()" class="ml-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold transition shadow-xs inline-flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-bolt text-amber-400"></i>
+                            <span>JSON Metnini Çözümle ve Ekle</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Immediate Add Button right inside the box -->
+                    <div id="quickAddActionBox" class="hidden mt-4 pt-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <button type="button" onclick="saveParsedQuestionsToPool()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold transition shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-circle-plus text-base"></i>
+                            <span id="quickAddBtnText">Yüklenen Soruları Şimdi Derse Ekle</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parsed Questions Preview List -->
+            <div id="parsedPreviewSection" class="hidden mt-5 pt-4 border-t border-slate-200">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <span id="parsedPreviewCount" class="text-xs sm:text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                        0 Soru Hazır
+                    </span>
+                    <button type="button" onclick="saveParsedQuestionsToPool()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold transition shadow-sm cursor-pointer">
+                        <i class="fa-solid fa-check-double mr-1.5"></i> Tümünü Soru Havuzuna Kaydet
+                    </button>
+                </div>
+                <div id="parsedPreviewList" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="resetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl mb-4">
+                <i class="fa-solid fa-rotate-left"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Çalışma Durumunu Sıfırla</h3>
+            <p class="text-xs sm:text-sm text-slate-600 mb-5">
+                Sadece kalan soruların işaretlerini mi temizlemek istiyorsun, yoksa gizlenen sorular dahil işaretleri ilk haline mi döndürmek istiyorsun? (Eklediğin sorular silinmez!)
+            </p>
+            <div class="space-y-2.5">
+                <button onclick="startNextStudyRound(); closeResetModal();" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-forward-step"></i>
+                    <span>Sadece İşaretleri Temizle (Gizlenenler Gizli Kalsın)</span>
+                </button>
+                <button onclick="fullResetCurrentPool(); closeResetModal();" class="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Tüm İşaretleri ve Gizlenenleri Sıfırla</span>
+                </button>
+                <button onclick="closeResetModal()" class="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium transition">
+                    Vazgeç
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * MODÜLER AÖF DERS VE SINAV VERİTABANI
+         * Yeni JSON soruları eklendikçe buradaki `COURSE_DATABASE` yapısına yeni dersler
+         * veya mevcut dersin soru havuzuna sorular eklenir ve cihazda kalıcı saklanır.
+         * ============================================================================
+         */
+        const COURSE_DATABASE = [
+            {
+                courseId: "istatistik",
+                courseName: "İSTATİSTİK",
+                isBuiltIn: true,
+                exams: [
+                    {
+                        examId: "2025-2026-guz-ara-a",
+                        examTitle: "2025-2026 Güz Ara Sınavı (A Grubu)",
+                        questions: [
+                            {
+                                id: "ist-2526-guz-ara-1",
+                                number: 1,
+                                unit: "Ünite 1: İstatistiksel Kavramlar",
+                                text: "Bilimsel çalışmalarda istatistiksel birimlere ulaşabilirliğin mümkün olduğu evren türü aşağıdakilerden hangisidir?",
+                                options: {
+                                    A: "Çoklu evren",
+                                    B: "Araştırma evreni",
+                                    C: "Paralel evren",
+                                    D: "Mega evren",
+                                    E: "Düşünce evreni"
+                                },
+                                correctAnswer: "B",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: B) Araştırma evreni</strong></p>
+                                    <p>İstatistiksel araştırmalarda evren ikiye ayrılır:</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li><strong>Hedef Evren (Kuramsal Evren):</strong> Araştırmacının ulaştığı sonuçları genellemek istediği ancak tamamına ulaşmanın çoğu zaman güç olduğu soyut/geniş evrendir.</li>
+                                        <li><strong>Araştırma Evreni (Ulaşılabilir Evren):</strong> Bilimsel çalışmalarda istatistiksel birimlere <strong>fiilen ulaşabilirliğin mümkün olduğu</strong> somut ve sınırları belirli evren türüdür.</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-2",
+                                number: 2,
+                                unit: "Ünite 1: İstatistiksel Kavramlar",
+                                text: "İstatistik birimi ile ilgili aşağıdaki ifadelerden hangisi yanlıştır?",
+                                options: {
+                                    A: "Sayılamayan ve ölçülemeyen nesne ve olaylar birim olabilir.",
+                                    B: "Canlı ve cansız varlıklar birim olabilir.",
+                                    C: "Birimin maddesel bir varlığa sahip olması gerekmez.",
+                                    D: "Yığın olaylar istatistik birimini oluşturur.",
+                                    E: "Maddi varlığa sahip birimler gerçek birimdir."
+                                },
+                                correctAnswer: "A",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: A) Sayılamayan ve ölçülemeyen nesne ve olaylar birim olabilir.</strong></p>
+                                    <p>İstatistik birimi; hakkında bilgi toplanan, <strong>sayılabilen veya ölçülebilen</strong> en küçük elemanlardır. Dolayısıyla <em>sayılamayan ve ölçülemeyen</em> nesne veya olaylar istatistik birimi <strong>olamaz</strong>. Diğer şıklardaki ifadeler (gerçek/düşünsel birim, canlı/cansız varlıklar, yığın olaylar) tamamen doğrudur.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-3",
+                                number: 3,
+                                unit: "Ünite 1: İstatistiksel Kavramlar",
+                                text: "Bir canlı, cansız varlıklar ve olaylar topluluğunun evren olabilmesi için bu topluluğu oluşturan birimlerin öncelikle ------ olması gerekir.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "yığın",
+                                    B: "sonsuz evren",
+                                    C: "ani birim",
+                                    D: "devamlı birim",
+                                    E: "örnek istatistiği"
+                                },
+                                correctAnswer: "A",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: A) yığın</strong></p>
+                                    <p>Bir canlı, cansız varlıklar ve olaylar topluluğunun istatistiksel anlamda <strong>evren (anakütle)</strong> oluşturabilmesi için öncelikle benzer özelliklere sahip birimlerden oluşan bir <strong>yığın</strong> niteliği taşıması gerekir.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-4",
+                                number: 4,
+                                unit: "Ünite 1: İstatistiksel Kavramlar",
+                                text: "Veri işlenirse bilgiye dönüşür, bilgi yorumlanırsa aşağıdakilerden hangisine dönüşmüş olur?",
+                                options: {
+                                    A: "Değişken",
+                                    B: "Ölçek",
+                                    C: "Bilim",
+                                    D: "Özbilgi",
+                                    E: "Örneklem"
+                                },
+                                correctAnswer: "D",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: D) Özbilgi</strong></p>
+                                    <p>AÖF İstatistik kitabındaki dönüşüm hiyerarşisi şu şekildedir:</p>
+                                    <div class="bg-white/80 rounded-lg p-2.5 my-1.5 border border-amber-200 font-semibold text-center text-slate-800">
+                                        Ham Veri <i class="fa-solid fa-arrow-right mx-1 text-amber-600"></i> (İşlenirse) <i class="fa-solid fa-arrow-right mx-1 text-amber-600"></i> Bilgi <i class="fa-solid fa-arrow-right mx-1 text-amber-600"></i> (Yorumlanırsa) <i class="fa-solid fa-arrow-right mx-1 text-amber-600"></i> <span class="text-indigo-700 underline">Özbilgi</span>
+                                    </div>
+                                    <p>İşlenmemiş gözlem kayıtlarına <strong>veri</strong>, işlenmiş veriye <strong>bilgi</strong>, bilginin deneyim ve analizle yorumlanmış haline ise <strong>özbilgi (bilgelik)</strong> denir.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-5",
+                                number: 5,
+                                unit: "Ünite 1: Değişken Türleri",
+                                text: "------ araştırmacının denetiminde olmayan, ------ ise araştırmacının denetiminde olan değişkendir.\n\nYukarıdaki cümlede boş bırakılan yerleri aşağıdakilerden hangisi sırasıyla ve doğru şekilde tamamlar?",
+                                options: {
+                                    A: "Bağımlı değişken / nitel değişken",
+                                    B: "Bağımlı değişken / sürekli değişken",
+                                    C: "Bağımlı değişken / bağımsız değişken",
+                                    D: "Kesikli değişken / sürekli değişken",
+                                    E: "Nicel değişken / nitel değişken"
+                                },
+                                correctAnswer: "C",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: C) Bağımlı değişken / bağımsız değişken</strong></p>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <li><strong>Bağımlı Değişken (Sonuç):</strong> Araştırmacının doğrudan denetiminde olmayan, bağımsız değişkene bağlı olarak değişen değişkendir.</li>
+                                        <li><strong>Bağımsız Değişken (Neden/Etken):</strong> Araştırmacının denetiminde olan ve etkisini görmek için değiştirebildiği değişkendir.</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-6",
+                                number: 6,
+                                unit: "Ünite 2: Frekans ve Seriler",
+                                text: "Yukarıda 15 öğrencinin İstatistik dersinden 100 üzerinden aldığı notlar bir liste olarak verilmiştir.\n\nBuna göre en yüksek frekansa sahip not aşağıdakilerden hangisidir?",
+                                extraHtml: `
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 font-mono text-xs sm:text-sm text-slate-800">
+                                        <strong>X<sub>i</sub> :</strong> 40, 15, 20, 15, 55, 65, 40, 60, 75, 80, 40, 75, 65, 80, 40
+                                    </div>
+                                `,
+                                options: {
+                                    A: "15",
+                                    B: "40",
+                                    C: "65",
+                                    D: "75",
+                                    E: "80"
+                                },
+                                correctAnswer: "B",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: B) 40</strong></p>
+                                    <p><strong>Frekans ($f_i$ veya $n_i$)</strong>, bir gözlem değerinin seride kaç kez tekrar ettiğini gösterir. Listedeki notların tekrar sayılarını sayalım:</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-0.5">
+                                        <li><strong>40 notu:</strong> 4 kez tekrar etmiştir (En yüksek frekans = Mod).</li>
+                                        <li><strong>15, 65, 75, 80 notları:</strong> 2'şer kez tekrar etmiştir.</li>
+                                        <li><strong>20, 55, 60 notları:</strong> 1'er kez tekrar etmiştir.</li>
+                                    </ul>
+                                    <p class="mt-1">En çok tekrar eden (en yüksek frekansa sahip) not <strong>40</strong>'tır.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-7",
+                                number: 7,
+                                unit: "Ünite 1: Ölçme ve Ölçek Türleri",
+                                text: "Değişkenin ölçümünde ------ kullanılmış ise ilk sütunda değişkenin ölçme düzeyleri olan kategoriler doğal sıralamalarına göre alt alta sıralanırlar.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "sıralayıcı ölçek",
+                                    B: "likert ölçeği",
+                                    C: "aralıklı ölçek",
+                                    D: "oransal ölçek",
+                                    E: "sınıflayıcı ölçek"
+                                },
+                                correctAnswer: "A",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: A) sıralayıcı ölçek</strong></p>
+                                    <p>Nitel değişkenler tablolanırken:</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li><strong>Sınıflayıcı ölçek</strong> kullanılmışsa kategoriler arasında üstünlük/sıra olmadığından frekansı en yüksek olandan düşüğe veya alfabetik dizilir.</li>
+                                        <li><strong>Sıralayıcı (Ordinal) ölçek</strong> kullanılmışsa (ör. İlkokul, Lise, Lisans veya Az, Orta, Çok) kategoriler <strong>doğal sıralamalarına göre</strong> ilk sütunda alt alta sıralanırlar.</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-8",
+                                number: 8,
+                                unit: "Ünite 2: İstatistiksel Seriler",
+                                text: "Tekrar eden gözlemlerin tekrar sayılarının kolayca belirlenebilmesi için basit seri yeni bir düzenlemeye tabi tutulursa, bu yeni düzenleme ile ortaya çıkan seriye ------ adı verilir.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "nicel seri",
+                                    B: "zaman serisi",
+                                    C: "basit seri",
+                                    D: "dağılma serisi",
+                                    E: "veri seti"
+                                },
+                                correctAnswer: "D",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: D) dağılma serisi</strong></p>
+                                    <p>Gözlem değerlerinin küçükten büyüğe sıralanmasıyla oluşan <em>basit seri</em>, gözlem sayısı arttığında tekrar eden değerlerin (frekansların) kolayca görülmesi için yeniden düzenlenir. Bu düzenleme sonucunda ortaya çıkan serilere (frekans serisi ve gruplandırılmış seriler) genel olarak <strong>dağılma serisi (bölünme serisi)</strong> adı verilir.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-9",
+                                number: 9,
+                                unit: "Ünite 2: Veri Derleme Yöntemleri",
+                                text: "Gözlemcinin herhangi bir durumu kontrol altında tutmadığı ve olayların kendi doğal sürecinde ortaya çıkmasına izin verdiği gözlem türü aşağıdakilerden hangisidir?",
+                                options: {
+                                    A: "Katılımlı gözlem",
+                                    B: "Doğal gözlem",
+                                    C: "Canlandırma",
+                                    D: "Oyun oynama",
+                                    E: "Görüşme"
+                                },
+                                correctAnswer: "B",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: B) Doğal gözlem</strong></p>
+                                    <p>Gözlemcinin ortama müdahale etmediği, hiçbir değişkeni kontrol altında tutmadığı ve olayların <strong>kendi doğal akışı/sürecinde</strong> gerçekleşmesine izin vererek yaptığı gözlem türüne <strong>doğal gözlem</strong> denir.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-10",
+                                number: 10,
+                                unit: "Ünite 2: Veri Toplama Hataları",
+                                text: "Birimlerin özelliklerini yüksek ve düşük gösterme yönünde etki yapan, böylece denkleşen hata türü aşağıdakilerden hangisidir?",
+                                options: {
+                                    A: "Maddi hata",
+                                    B: "Ölçme hatası",
+                                    C: "Sistematik hata",
+                                    D: "I. tip hata",
+                                    E: "Rassal hata"
+                                },
+                                correctAnswer: "E",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: E) Rassal hata</strong></p>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <li><strong>Rassal (Tesadüfi) Hata:</strong> Tek yönlü olmayan; birimlerin özelliklerini bazen yüksek (+) bazen düşük (-) gösterme yönünde etki yapan ve gözlem sayısı arttıkça birbirini götürerek <strong>denkleşen</strong> (ortalaması sıfıra yaklaşan) hata türüdür.</li>
+                                        <li><strong>Sistematik Hata:</strong> Hep aynı yönde (sürekli fazla veya sürekli eksik) sapmaya yol açan, denkleşmeyen hatadır.</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-11",
+                                number: 11,
+                                unit: "Ünite 3: Merkezi Eğilim Ölçüleri",
+                                text: "Yukarıdaki basit serinin mod değeri kaçtır?",
+                                extraHtml: `
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 font-mono text-xs sm:text-sm text-slate-800">
+                                        <strong>X :</strong> 6800, 6900, 7100, 7200, <span class="font-bold text-indigo-700">7400, 7400, 7400</span>, 7700, 8100
+                                    </div>
+                                `,
+                                options: {
+                                    A: "6900",
+                                    B: "7200",
+                                    C: "7400",
+                                    D: "7700",
+                                    E: "7800"
+                                },
+                                correctAnswer: "C",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: C) 7400</strong></p>
+                                    <p><strong>Mod (Tepe Değer)</strong>, bir seride en çok tekrar eden (frekansı en yüksek olan) gözlem değeridir. Verilen basit seride <strong>7400</strong> değeri <strong>3 kez</strong> tekrar ettiği için serinin modu <strong>7400</strong>'dür.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-12",
+                                number: 12,
+                                unit: "Ünite 3: Değişkenlik Ölçüleri",
+                                text: "Yukarıdaki değişkenlik ölçülerinden hangilerinin hesaplanmasında aritmetik ortalamayı kullanmak zorunludur?",
+                                extraHtml: `
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 text-xs sm:text-sm text-slate-800 space-y-1">
+                                        <div><strong>I.</strong> Değişim aralığı</div>
+                                        <div><strong>II.</strong> Değişim katsayısı</div>
+                                        <div><strong>III.</strong> Standart sapma</div>
+                                        <div><strong>IV.</strong> Varyans</div>
+                                    </div>
+                                `,
+                                options: {
+                                    A: "Yalnız I",
+                                    B: "I ve II",
+                                    C: "III ve IV",
+                                    D: "I, II ve III",
+                                    E: "II, III ve IV"
+                                },
+                                correctAnswer: "E",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: E) II, III ve IV</strong></p>
+                                    <p>Formülleri inceleyelim:</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li><strong>I. Değişim Aralığı ($R$):</strong> $X_{\\max} - X_{\\min}$ (Sadece en büyük ve en küçük değer kullanılır, aritmetik ortalama <em>kullanılmaz</em>).</li>
+                                        <li><strong>IV. Varyans ($s^2$):</strong> $\\frac{\\sum (X_i - \\bar{X})^2}{n-1}$ (Aritmetik ortalama $\\bar{X}$ <strong>zorunludur</strong>).</li>
+                                        <li><strong>III. Standart Sapma ($s$):</strong> Varyansın kareköküdür (Aritmetik ortalama $\\bar{X}$ <strong>zorunludur</strong>).</li>
+                                        <li><strong>II. Değişim Katsayısı ($DK$):</strong> $\\frac{s}{\\bar{X}} \\times 100$ (Hem standart sapma hem aritmetik ortalama $\\bar{X}$ <strong>zorunludur</strong>).</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-13",
+                                number: 13,
+                                unit: "Ünite 3: Değişkenlik Ölçüleri",
+                                text: "Seriyi oluşturan gözlem değerlerinin birbirlerinden ve aritmetik ortalamadan ne derece uzaklaştıkları, ------ ile belirlenir.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "medyan değeri",
+                                    B: "tartılı aritmetik ortalama",
+                                    C: "mod değeri",
+                                    D: "değişkenlik ölçüsü",
+                                    E: "zaman aralığı"
+                                },
+                                correctAnswer: "D",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: D) değişkenlik ölçüsü</strong></p>
+                                    <p>Merkezi eğilim ölçüleri (aritmetik ortalama, mod, medyan) serinin hangi değer etrafında toplandığını gösterirken; gözlem değerlerinin birbirlerinden ve aritmetik ortalamadan ne derece uzaklaştığını (homojenlik veya heterojenliği) <strong>değişkenlik (dağılım) ölçüleri</strong> belirler.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-14",
+                                number: 14,
+                                unit: "Ünite 3: Merkezi Eğilim Ölçüleri",
+                                text: "Yukarıdaki serinin medyan değeri kaçtır?",
+                                extraHtml: `
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2 font-mono text-xs sm:text-sm text-slate-800">
+                                        <strong>X :</strong> 6, &nbsp;10, &nbsp;<span class="font-bold text-indigo-700 underline">13</span>, &nbsp;<span class="font-bold text-indigo-700 underline">17</span>, &nbsp;25, &nbsp;28
+                                    </div>
+                                `,
+                                options: {
+                                    A: "10",
+                                    B: "12",
+                                    C: "14",
+                                    D: "15",
+                                    E: "18"
+                                },
+                                correctAnswer: "D",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: D) 15</strong></p>
+                                    <p><strong>Medyan (Ortanca)</strong>, küçükten büyüğe sıralanmış bir seriyi tam ortadan ikiye bölen değerdir:</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li>Gözlem sayısı $n = 6$ (çift sayı) olduğu için ortadaki iki terimin (3. ve 4. terimlerin) aritmetik ortalaması alınır.</li>
+                                        <li>3. terim $= 13$, 4. terim $= 17$</li>
+                                        <li>$\\text{Medyan} = \\frac{13 + 17}{2} = \\frac{30}{2} = \\mathbf{15}$</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-15",
+                                number: 15,
+                                unit: "Ünite 3: Merkezi Eğilim Ölçüleri",
+                                text: "Yukarıdaki frekans serisinin aritmetik ortalaması kaçtır?",
+                                extraHtml: `
+                                    <div class="overflow-x-auto my-2">
+                                        <table class="w-48 border-collapse border border-slate-300 text-center text-xs sm:text-sm bg-white rounded-lg overflow-hidden">
+                                            <thead class="bg-slate-100 font-bold text-slate-800">
+                                                <tr>
+                                                    <th class="border border-slate-300 py-1.5 px-3">X<sub>i</sub></th>
+                                                    <th class="border border-slate-300 py-1.5 px-3">n<sub>i</sub></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td class="border border-slate-300 py-1">1</td><td class="border border-slate-300 py-1">2</td></tr>
+                                                <tr><td class="border border-slate-300 py-1">2</td><td class="border border-slate-300 py-1">5</td></tr>
+                                                <tr><td class="border border-slate-300 py-1">6</td><td class="border border-slate-300 py-1">8</td></tr>
+                                                <tr><td class="border border-slate-300 py-1">9</td><td class="border border-slate-300 py-1">10</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `,
+                                options: {
+                                    A: "2",
+                                    B: "6",
+                                    C: "8",
+                                    D: "9",
+                                    E: "10"
+                                },
+                                correctAnswer: "B",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: B) 6</strong></p>
+                                    <p>Frekans serilerinde aritmetik ortalama formülü: $\\bar{X} = \\frac{\\sum (X_i \\cdot n_i)}{\\sum n_i}$</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li>$X_i \\cdot n_i$ çarpımlarını bulalım:
+                                            <br>• $1 \\times 2 = 2$
+                                            <br>• $2 \\times 5 = 10$
+                                            <br>• $6 \\times 8 = 48$
+                                            <br>• $9 \\times 10 = 90$
+                                        </li>
+                                        <li>Çarpımların toplamı: $\\sum (X_i \\cdot n_i) = 2 + 10 + 48 + 90 = \\mathbf{150}$</li>
+                                        <li>Toplam frekans: $\\sum n_i = 2 + 5 + 8 + 10 = \\mathbf{25}$</li>
+                                        <li>$\\bar{X} = \\frac{150}{25} = \\mathbf{6}$</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-16",
+                                number: 16,
+                                unit: "Ünite 4: Endeksler",
+                                text: "Yukarıdaki tabloda 2018 yılı temel devre kabul edildiğine göre 2020 yılına ait sabit esaslı endeks değeri yaklaşık olarak kaçtır?",
+                                extraHtml: `
+                                    <div class="my-2">
+                                        <div class="text-xs font-semibold text-slate-600 mb-1">Türkiye'de yıllara göre fındık üretimi</div>
+                                        <table class="w-64 border-collapse border border-slate-300 text-center text-xs sm:text-sm bg-white rounded-lg overflow-hidden">
+                                            <thead class="bg-slate-100 font-bold text-slate-800">
+                                                <tr>
+                                                    <th class="border border-slate-300 py-1.5 px-3">Yıllar</th>
+                                                    <th class="border border-slate-300 py-1.5 px-3">Üretim (bin ton)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td class="border border-slate-300 py-1">2018</td><td class="border border-slate-300 py-1">515</td></tr>
+                                                <tr><td class="border border-slate-300 py-1">2019</td><td class="border border-slate-300 py-1">776</td></tr>
+                                                <tr><td class="border border-slate-300 py-1">2020</td><td class="border border-slate-300 py-1">665</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `,
+                                options: {
+                                    A: "109,1",
+                                    B: "111,1",
+                                    C: "129,1",
+                                    D: "135,3",
+                                    E: "137,4"
+                                },
+                                correctAnswer: "C",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: C) 129,1</strong></p>
+                                    <p><strong>Sabit Esaslı Miktar Endeksi</strong> formülü: $I_{t/0} = \\frac{q_t}{q_0} \\times 100$</p>
+                                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                                        <li>Temel devre (2018 yılı üretimi, $q_0$): <strong>515</strong></li>
+                                        <li>İncelenen devre (2020 yılı üretimi, $q_{2020}$): <strong>665</strong></li>
+                                        <li>$I_{2020/2018} = \\frac{665}{515} \\times 100 = 1,29126 \\times 100 \\approx \\mathbf{129,1}$</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-17",
+                                number: 17,
+                                unit: "Ünite 4: Endeksler",
+                                text: "------, Laspeyres ve Paasche indekslerinin geometrik ortalaması alınarak hesaplanır.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "Fisher endeksi",
+                                    B: "Mekân endeksi",
+                                    C: "Zaman endeksi",
+                                    D: "Sabit endeks",
+                                    E: "Basit endeks"
+                                },
+                                correctAnswer: "A",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: A) Fisher endeksi</strong></p>
+                                    <p><strong>Fisher (İdeal) Endeksi</strong>, Laspeyres ($I_L$) ve Paasche ($I_P$) endekslerinin <strong>geometrik ortalaması</strong> alınarak hesaplanır:</p>
+                                    <div class="bg-white/80 rounded-lg p-2 my-1 border border-amber-200 font-mono text-center text-slate-800">
+                                        I<sub>Fisher</sub> = &radic;(I<sub>Laspeyres</sub> &times; I<sub>Paasche</sub>)
+                                    </div>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-18",
+                                number: 18,
+                                unit: "Ünite 4: Endeksler",
+                                text: "------, ülke ekonomisinde üretimi yapılan ve yurt içinde satışa konu olan ürünlerin üretici fiyatlarının ay veya yıl içerisindeki değişmelerini ölçen endekstir.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "Bileşik miktar endeksi",
+                                    B: "Tüketici fiyatları endeksi",
+                                    C: "Sabit esaslı endeks",
+                                    D: "Basit miktar endeksi",
+                                    E: "Üretici fiyatları endeksi"
+                                },
+                                correctAnswer: "E",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: E) Üretici fiyatları endeksi</strong></p>
+                                    <p>Ülke ekonomisinde üretimi yapılan ve yurt içinde satışa konu olan ürünlerin <strong>üretici fiyatlarının</strong> zaman (ay veya yıl) içerisindeki değişmelerini ölçen fiyat endeksine <strong>Üretici Fiyatları Endeksi (ÜFE / Yİ-ÜFE)</strong> denir.</p>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-19",
+                                number: 19,
+                                unit: "Ünite 4: Endeksler",
+                                text: "Birden fazla maddenin fiyat ve/veya miktarlarında meydana gelen oransal değişimleri gösteren endekse ne ad verilir?",
+                                options: {
+                                    A: "Fisher Fiyat endeksi",
+                                    B: "Ortalamalar endeksi",
+                                    C: "Sabit esaslı endeks",
+                                    D: "Laspeyres miktar endeksi",
+                                    E: "Bileşik endeks"
+                                },
+                                correctAnswer: "E",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: E) Bileşik endeks</strong></p>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <li><strong>Basit Endeks:</strong> Tek bir maddenin fiyat veya miktarındaki oransal değişimi gösterir.</li>
+                                        <li><strong>Bileşik Endeks:</strong> <strong>Birden fazla maddenin</strong> fiyat ve/veya miktarlarında meydana gelen oransal değişimleri bir arada gösteren endekse denir.</li>
+                                    </ul>
+                                `
+                            },
+                            {
+                                id: "ist-2526-guz-ara-20",
+                                number: 20,
+                                unit: "Ünite 4: Endeksler",
+                                text: "Bir değişken ya da değişkenler grubunun, zamana veya mekâna göre aldığı değerlerin oransal değişimlerini gösteren istatistiksel ölçüye ------ denir.\n\nYukarıdaki cümlede boş bırakılan yeri aşağıdakilerden hangisi doğru şekilde tamamlar?",
+                                options: {
+                                    A: "olasılık",
+                                    B: "ölçek",
+                                    C: "endeks",
+                                    D: "ortalama",
+                                    E: "birim"
+                                },
+                                correctAnswer: "C",
+                                isBuiltIn: true,
+                                explanation: `
+                                    <p class="mb-1.5"><strong>Doğru Cevap: C) endeks</strong></p>
+                                    <p>Bir değişkenin veya değişkenler grubunun <strong>zamana ya da mekâna göre</strong> aldığı değerlerdeki <strong>oransal değişimleri</strong> ölçmeye yarayan istatistiksel göstergeye <strong>endeks (indeks)</strong> adı verilir.</p>
+                                `
+                            }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        /**
+         * ============================================================================
+         * 4 DERSİN RESMİ CEVAP ANAHTARI DÜZELTME TABLOSU
+         * İlk 3 derse kesinlikle dokunulmaz. Yalnızca bu 4 dersin cevap anahtarı güncellenir.
+         * ============================================================================
+         */
+        const FOUR_COURSES_ANSWER_KEYS = {
+            uluslararasi: [
+                "C","E","B","A","D","B","B","E","C","D",
+                "C","A","D","E","A","C","E","D","A","B",
+                "D","A","A","E","C","D","C","B","E","E",
+                "D","E","B","B","A","C","A","B","D","C",
+                "E","B","D","B","C","E","A","E","C","D",
+                "D","B","C","E","B","A","D","C","A","A",
+                "E","C","A","B","C","B","D","D","C","E",
+                "D","E","A","A","E","D","B","C","B","A",
+                "A","D","C","E","D","C","B","E","D","A",
+                "E","B","B","E","C","D","A","A","B","C"
+            ],
+            uretim: [
+                "E","D","A","B","D","A","A","D","B","C",
+                "A","B","C","C","E","B","D","E","E","C",
+                "D","A","E","C","B","D","D","A","C","C",
+                "A","B","D","E","B","E","C","E","B","A",
+                "D","A","A","E","D","E","E","A","D","C",
+                "C","A","B","B","D","C","B","B","E","B",
+                "C","A","D","B","B","B","E","E","A","E",
+                "A","D","A","C","E","D","C","D","B","C",
+                "A","C","B","A","E","D","E","E","D","E",
+                "C","B","D","B","D","C","A","C","B","A"
+            ],
+            maliyet: [
+                "E","D","A","B","E","A","B","B","B","D",
+                "D","C","D","A","E","E","C","C","A","C",
+                "D","A","C","C","B","E","A","İPTAL","D","B",
+                "B","E","A","E","A","D","D","D","C","C",
+                "C","D","C","B","A","E","D","B","E","D",
+                "C","A","E","A","E","D","B","A","B","C",
+                "A","C","B","D","C","E","D","E","A","C",
+                "E","A","D","E","B","C","D","A","B","B",
+                "B","B","E","C","C","E","B","A","D","D",
+                "A","A","A","C","D","E","A","B","C","D"
+            ],
+            pazarlama: [
+                "D","A","B","A","C","E","B","E","B","C",
+                "C","E","D","C","B","A","D","E","D","A",
+                "A","D","B","A","C","D","B","C","A","E",
+                "D","C","E","D","A","E","C","B","B","E",
+                "D","B","A","C","B","E","B","A","A","B",
+                "C","D","D","E","C","E","A","D","E","C",
+                "C","E","D","E","B","A","A","C","D","A",
+                "B","E","B","C","D","D","A","B","C","E",
+                "D","A","B","D","B","C","A","E","E","C",
+                "A","D","E","D","C","C","A","B","E","B"
+            ]
+        };
+
+        function detectTargetFourCourseKey(course, courseIndex) {
+            // İlk 3 derste hiçbir şeyi değiştirme
+            if (COURSE_DATABASE.length >= 7 && courseIndex < 3) {
+                return null;
+            }
+            const name = String(course.courseName || "").toLocaleUpperCase("tr-TR");
+            const firstQ = String(course.exams?.[0]?.questions?.[0]?.text || "").toLocaleLowerCase("tr-TR");
+
+            if (name.includes("ULUSLARARASI") || firstQ.includes("kısa vadeli finansal getiri")) {
+                return "uluslararasi";
+            }
+            if (name.includes("ÜRETİM") || name.includes("URETIM") || firstQ.includes("tarihsel bir bakış açısı")) {
+                return "uretim";
+            }
+            if (name.includes("MALİYET") || name.includes("MALIYET") || firstQ.includes("üretimine devam edilen mamullerin")) {
+                return "maliyet";
+            }
+            if (name.includes("PAZARLAMA") || firstQ.includes("performans değerlemesinde kullanılan somut")) {
+                return "pazarlama";
+            }
+            return null;
+        }
+
+        function applyFourCoursesAnswerKeyFix() {
+            const updatedQuestionsForCloud = [];
+
+            COURSE_DATABASE.forEach((course, courseIndex) => {
+                const keyType = detectTargetFourCourseKey(course, courseIndex);
+                if (!keyType) return;
+
+                const answerKeyList = FOUR_COURSES_ANSWER_KEYS[keyType];
+                if (!answerKeyList) return;
+
+                let qCounter = 0;
+                course.exams.forEach(exam => {
+                    exam.questions.forEach(q => {
+                        const correctAns = answerKeyList[qCounter];
+                        qCounter++;
+                        if (!correctAns) return;
+
+                        if (q.correctAnswer !== correctAns) {
+                            q.correctAnswer = correctAns;
+                            const optText = (q.options && q.options[correctAns]) || "";
+                            q.explanation = correctAns === "İPTAL"
+                                ? `<p><strong>Doğru Cevap: İPTAL (Bu soru iptal edilmiştir.)</strong></p>`
+                                : `<p><strong>Doğru Cevap: ${correctAns}) ${optText}</strong></p>`;
+                            updatedQuestionsForCloud.push(q);
+                        } else if (q.explanation && q.explanation.includes("Doğru Cevap: A)") && correctAns !== "A") {
+                            const optText = (q.options && q.options[correctAns]) || "";
+                            q.explanation = `<p><strong>Doğru Cevap: ${correctAns}) ${optText}</strong></p>`;
+                            updatedQuestionsForCloud.push(q);
+                        }
+                    });
+                });
+            });
+
+            return updatedQuestionsForCloud;
+        }
+
+        /**
+         * ============================================================================
+         * UYGULAMA DURUMU (STATE) VE KALICI YEREL VERİTABANI (INDEXEDDB + LOCALSTORAGE)
+         * ============================================================================
+         */
+        let currentCourseId = COURSE_DATABASE[0].courseId;
+        let currentFilterMode = "active"; // 'active' | 'needsReview' | 'hidden' | 'all'
+        let currentStudyRound = 1;
+
+        const questionStates = {};
+        let lastHiddenQuestionId = null;
+        let toastTimeout = null;
+
+        const LOCAL_STORAGE_KEY = "AOF_AKILLI_SORU_HAVUZU_MASTER_V2";
+        const IDB_NAME = "AOF_AkilliSoruHavuzuDB";
+        const IDB_STORE = "app_state_store";
+        let idbInstance = null;
+
+        /**
+         * IndexedDB Bağlantısını Aç
+         */
+        function openLocalIndexedDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) {
+                    resolve(null);
+                    return;
+                }
+                const req = window.indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE);
+                    }
+                };
+                req.onsuccess = (e) => {
+                    idbInstance = e.target.result;
+                    resolve(idbInstance);
+                };
+                req.onerror = () => resolve(null);
+            });
+        }
+
+        /**
+         * Mevcut tüm özel dersleri, eklenen soruları ve kullanıcı ilerlemesini paketler
+         */
+        function buildPersistentSnapshot() {
+            const customCourses = [];
+            const customQuestions = [];
+
+            COURSE_DATABASE.forEach(course => {
+                if (!course.isBuiltIn) {
+                    customCourses.push({
+                        courseId: course.courseId,
+                        courseName: course.courseName
+                    });
+                }
+                course.exams.forEach(ex => {
+                    ex.questions.forEach(q => {
+                        if (!q.isBuiltIn) {
+                            customQuestions.push({
+                                id: q.id,
+                                courseId: course.courseId,
+                                courseName: course.courseName,
+                                number: q.number,
+                                unit: q.unit || "Çıkmış Sınav Sorusu",
+                                text: q.text || "",
+                                extraHtml: q.extraHtml || "",
+                                options: q.options,
+                                correctAnswer: q.correctAnswer,
+                                explanation: q.explanation || "",
+                                createdAt: q.createdAt || Date.now()
+                            });
+                        }
+                    });
+                });
+            });
+
+            return {
+                version: 2,
+                savedAt: Date.now(),
+                currentCourseId,
+                currentStudyRound,
+                questionStates,
+                customCourses,
+                customQuestions
+            };
+        }
+
+        /**
+         * Paketlenmiş veriyi COURSE_DATABASE ve questionStates içine uygular (Tekrar etmeden)
+         */
+        function applyPersistentSnapshot(snapshot) {
+            if (!snapshot || typeof snapshot !== "object") return;
+
+            // 1. Özel dersleri ekle
+            if (Array.isArray(snapshot.customCourses)) {
+                snapshot.customCourses.forEach(c => {
+                    if (!c || !c.courseId) return;
+                    const exists = COURSE_DATABASE.find(item => item.courseId === c.courseId);
+                    if (!exists) {
+                        COURSE_DATABASE.push({
+                            courseId: c.courseId,
+                            courseName: c.courseName || "YENİ DERS",
+                            isBuiltIn: false,
+                            exams: [{
+                                examId: `${c.courseId}-pool`,
+                                examTitle: `${c.courseName || "YENİ DERS"} Soru Havuzu`,
+                                questions: []
+                            }]
+                        });
+                    }
+                });
+            }
+
+            // 2. Özel soruları ekle
+            if (Array.isArray(snapshot.customQuestions)) {
+                // Var olan özel soruları kontrol et, aynı id veya aynı ders+metin varsa tekrarlama
+                const existingIds = new Set();
+                COURSE_DATABASE.forEach(c => {
+                    c.exams.forEach(ex => {
+                        ex.questions.forEach(q => existingIds.add(q.id));
+                    });
+                });
+
+                const sortedQuestions = [...snapshot.customQuestions].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+                sortedQuestions.forEach(q => {
+                    if (!q || !q.id || existingIds.has(q.id)) return;
+
+                    let targetCourse = COURSE_DATABASE.find(c => c.courseId === q.courseId);
+                    if (!targetCourse) {
+                        targetCourse = {
+                            courseId: q.courseId || ("ders-" + Date.now()),
+                            courseName: q.courseName || "YENİ DERS",
+                            isBuiltIn: false,
+                            exams: [{
+                                examId: `${q.courseId}-pool`,
+                                examTitle: `${q.courseName || "YENİ DERS"} Soru Havuzu`,
+                                questions: []
+                            }]
+                        };
+                        COURSE_DATABASE.push(targetCourse);
+                    }
+                    if (targetCourse.exams.length === 0) {
+                        targetCourse.exams.push({
+                            examId: `${targetCourse.courseId}-pool`,
+                            examTitle: `${targetCourse.courseName} Soru Havuzu`,
+                            questions: []
+                        });
+                    }
+
+                    targetCourse.exams[0].questions.push({
+                        id: q.id,
+                        courseId: targetCourse.courseId,
+                        courseName: targetCourse.courseName,
+                        number: targetCourse.exams[0].questions.length + 1,
+                        unit: q.unit || "Çıkmış Sınav Sorusu",
+                        text: q.text || "",
+                        extraHtml: q.extraHtml || "",
+                        options: {
+                            A: (q.options && q.options.A) || "",
+                            B: (q.options && q.options.B) || "",
+                            C: (q.options && q.options.C) || "",
+                            D: (q.options && q.options.D) || "",
+                            E: (q.options && q.options.E) || ""
+                        },
+                        correctAnswer: q.correctAnswer || "A",
+                        explanation: q.explanation || "",
+                        createdAt: q.createdAt || Date.now(),
+                        isBuiltIn: false
+                    });
+                    existingIds.add(q.id);
+                });
+            }
+
+            // 3. Soru durumlarını (işaretler, gizlenenler) geri yükle
+            if (snapshot.questionStates && typeof snapshot.questionStates === "object") {
+                Object.keys(snapshot.questionStates).forEach(k => {
+                    questionStates[k] = snapshot.questionStates[k];
+                });
+            }
+
+            // 4. Seçili ders ve tur bilgisini geri yükle
+            if (snapshot.currentCourseId && COURSE_DATABASE.some(c => c.courseId === snapshot.currentCourseId)) {
+                currentCourseId = snapshot.currentCourseId;
+            }
+            if (snapshot.currentStudyRound && Number(snapshot.currentStudyRound) >= 1) {
+                currentStudyRound = Number(snapshot.currentStudyRound);
+                const badge = document.getElementById("roundBadge");
+                if (badge) badge.textContent = `${currentStudyRound}. Çözüm Turu`;
+            }
+
+            // 5. İlk 3 derse dokunmadan sadece 4 dersin cevap anahtarlarını düzelt
+            const fixedCloudQuestions = applyFourCoursesAnswerKeyFix();
+            if (fixedCloudQuestions.length > 0 && window.saveCustomQuestionsBatchToCloud) {
+                window.saveCustomQuestionsBatchToCloud(fixedCloudQuestions);
+            }
+        }
+
+        /**
+         * Tüm verileri hem LocalStorage hem de IndexedDB'ye anında kaydeder
+         */
+        function saveAllToPersistentStorage() {
+            const snapshot = buildPersistentSnapshot();
+
+            // 1. LocalStorage Kaydı (Anlık Senkron)
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
+            } catch (e) {
+                console.warn("LocalStorage yazma uyarısı:", e);
+            }
+
+            // 2. IndexedDB Kaydı (Geniş Kapasiteli Uygulama Hafızası)
+            if (idbInstance) {
+                try {
+                    const tx = idbInstance.transaction(IDB_STORE, "readwrite");
+                    tx.objectStore(IDB_STORE).put(snapshot, "master");
+                } catch (e) {
+                    console.warn("IndexedDB yazma uyarısı:", e);
+                }
+            }
+
+            // 3. Rozet ve zaman bilgisini güncelle
+            const syncText = document.getElementById("cloudSyncText");
+            if (syncText) {
+                const customCount = snapshot.customQuestions.length;
+                syncText.textContent = customCount > 0
+                    ? `Kalıcı Hafıza Aktif (${customCount} Eklenen Soru)`
+                    : `Kalıcı Hafıza Aktif`;
+            }
+            const lastSavedEl = document.getElementById("lastSavedTimeText");
+            if (lastSavedEl) {
+                const nowStr = new Date().toLocaleTimeString("tr-TR");
+                lastSavedEl.textContent = `Son otomatik kayıt: ${nowStr}`;
+            }
+            updateBackupModalStats();
+        }
+
+        /**
+         * Açılışta hem LocalStorage hem de IndexedDB'den verileri okur ve birleştirir
+         */
+        async function loadAllFromPersistentStorage() {
+            // Önce LocalStorage'dan anında yükle
+            try {
+                const rawLocal = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (rawLocal) {
+                    const parsedLocal = JSON.parse(rawLocal);
+                    applyPersistentSnapshot(parsedLocal);
+                }
+            } catch (e) {
+                console.warn("LocalStorage okuma hatası:", e);
+            }
+
+            // Ardından IndexedDB'yi aç ve oradaki kayıtları da birleştir
+            const db = await openLocalIndexedDB();
+            if (db) {
+                await new Promise((resolve) => {
+                    try {
+                        const tx = db.transaction(IDB_STORE, "readonly");
+                        const req = tx.objectStore(IDB_STORE).get("master");
+                        req.onsuccess = () => {
+                            if (req.result) {
+                                applyPersistentSnapshot(req.result);
+                            }
+                            resolve();
+                        };
+                        req.onerror = () => resolve();
+                    } catch (e) {
+                        resolve();
+                    }
+                });
+            }
+
+            applyFourCoursesAnswerKeyFix();
+            populateCourseSelector();
+            renderAll();
+            saveAllToPersistentStorage();
+        }
+
+        function ensureQuestionState(qId) {
+            if (!questionStates[qId]) {
+                questionStates[qId] = {
+                    selectedOption: null,
+                    solutionOpen: false,
+                    peekedSolutionBeforeCorrect: false,
+                    hadWrongAttempt: false,
+                    isHidden: false
+                };
+            }
+            return questionStates[qId];
+        }
+
+        /**
+         * Seçili dersin tüm sorularını tek bir birleşik havuz olarak döndürür
+         */
+        function getCurrentPoolQuestions() {
+            const course = COURSE_DATABASE.find(c => c.courseId === currentCourseId);
+            if (!course) return [];
+
+            let allQuestions = [];
+            course.exams.forEach(exam => {
+                exam.questions.forEach(q => {
+                    allQuestions.push({
+                        ...q,
+                        number: allQuestions.length + 1,
+                        courseName: course.courseName
+                    });
+                });
+            });
+            return allQuestions;
+        }
+
+        /**
+         * Çözümsüz doğru mu kontrol eder:
+         * Doğru şık seçilmiş + çözüme önceden bakılmamış + yanlış deneme yapılmamış
+         */
+        function isSelfSolvedCorrectly(q, state) {
+            return (
+                state.selectedOption === q.correctAnswer &&
+                !state.peekedSolutionBeforeCorrect &&
+                !state.hadWrongAttempt
+            );
+        }
+
+        /**
+         * Yanlış yapılan soru mu?
+         */
+        function isNeedsReview(q, state) {
+            if (state.selectedOption && state.selectedOption !== q.correctAnswer) return true;
+            if (!state.selectedOption && state.hadWrongAttempt) return true;
+            return false;
+        }
+
+        /**
+         * ============================================================================
+         * BAŞLATMA VE SEÇİCİLERİN DOLDURULMASI
+         * ============================================================================
+         */
+        async function initApp() {
+            populateCourseSelector();
+            renderAll();
+            await loadAllFromPersistentStorage();
+        }
+
+        function populateCourseSelector() {
+            const courseSelect = document.getElementById("courseSelect");
+            if (!courseSelect) return;
+            courseSelect.innerHTML = COURSE_DATABASE.map(course => {
+                const totalQ = course.exams.reduce((acc, ex) => acc + ex.questions.length, 0);
+                return `<option value="${course.courseId}" ${course.courseId === currentCourseId ? 'selected' : ''}>
+                    Ders: ${course.courseName} (${totalQ} Soru)
+                </option>`;
+            }).join("");
+        }
+
+        function handleCourseChange() {
+            currentCourseId = document.getElementById("courseSelect").value;
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        function setFilterMode(mode) {
+            currentFilterMode = mode;
+            renderAll();
+        }
+
+        /**
+         * ============================================================================
+         * KULLANICI ETKİLEŞİMLERİ: ŞIK İŞARETLEME, ÇÖZÜM GÖSTERME, SORU GİZLEME
+         * ============================================================================
+         */
+        function selectOption(questionId, optionKey) {
+            const pool = getCurrentPoolQuestions();
+            const q = pool.find(item => item.id === questionId);
+            if (!q) return;
+
+            const state = ensureQuestionState(questionId);
+
+            // Eğer aynı şıkka tekrar tıklanırsa seçimi kaldırabilsin
+            if (state.selectedOption === optionKey) {
+                state.selectedOption = null;
+                renderAll();
+                saveAllToPersistentStorage();
+                if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+                return;
+            }
+
+            // Eğer yanlış şık işaretlendiyse kaydet
+            if (optionKey !== q.correctAnswer) {
+                state.hadWrongAttempt = true;
+            }
+
+            state.selectedOption = optionKey;
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        function toggleSolution(questionId) {
+            const pool = getCurrentPoolQuestions();
+            const q = pool.find(item => item.id === questionId);
+            if (!q) return;
+
+            const state = ensureQuestionState(questionId);
+            state.solutionOpen = !state.solutionOpen;
+
+            // Eğer henüz doğru cevabı işaretlemeden çözüme baktıysa kaydet
+            if (state.solutionOpen && state.selectedOption !== q.correctAnswer) {
+                state.peekedSolutionBeforeCorrect = true;
+            }
+
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        function toggleHideQuestion(questionId) {
+            const pool = getCurrentPoolQuestions();
+            const q = pool.find(item => item.id === questionId);
+            if (!q) return;
+
+            const state = ensureQuestionState(questionId);
+            state.isHidden = !state.isHidden;
+
+            if (state.isHidden) {
+                lastHiddenQuestionId = questionId;
+                showToast(`Soru ${q.number} öğrenilenlere taşındı. Sonraki turda karşına çıkmayacak.`, true);
+            } else {
+                showToast(`Soru ${q.number} tekrar sorular arasına alındı.`, false);
+            }
+
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        function undoLastHide() {
+            if (!lastHiddenQuestionId) return;
+            const state = ensureQuestionState(lastHiddenQuestionId);
+            state.isHidden = false;
+            lastHiddenQuestionId = null;
+            hideToast();
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        /**
+         * Çözüme bakmadan doğru işaretlenen tüm soruları tek tıkla gizler
+         */
+        function autoHideSelfSolved() {
+            const pool = getCurrentPoolQuestions();
+            let hiddenCount = 0;
+
+            pool.forEach(q => {
+                const state = ensureQuestionState(q.id);
+                if (!state.isHidden && isSelfSolvedCorrectly(q, state)) {
+                    state.isHidden = true;
+                    hiddenCount++;
+                }
+            });
+
+            if (hiddenCount > 0) {
+                showToast(`${hiddenCount} adet çözümsüz doğru işaretlediğin soru öğrenilenlere taşındı!`, false);
+            } else {
+                showToast(`Taşınacak yeni 'çözümsüz doğru' soru bulunamadı.`, false);
+            }
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        /**
+         * Yeni Çözüm Turu:
+         * Gizlenen sorular gizli kalmaya devam eder.
+         * Gizlenmemiş (bilemediğin / çözüme baktığın / boş kalan) soruların şık seçimleri
+         * ve açık çözüm kutuları sıfırlanır; böylece sadece bilemediğin soruları baştan çözersin.
+         */
+        function startNextStudyRound() {
+            const pool = getCurrentPoolQuestions();
+            let remainingCount = 0;
+
+            pool.forEach(q => {
+                const state = ensureQuestionState(q.id);
+                if (!state.isHidden) {
+                    state.selectedOption = null;
+                    state.solutionOpen = false;
+                    state.peekedSolutionBeforeCorrect = false;
+                    state.hadWrongAttempt = false;
+                    remainingCount++;
+                }
+            });
+
+            if (remainingCount === 0) {
+                showToast("Tüm sorular öğrenilenler listesinde! Önce öğrenilen soruları geri açabilirsin.", false);
+                return;
+            }
+
+            currentStudyRound++;
+            currentFilterMode = "active";
+            document.getElementById("roundBadge").textContent = `${currentStudyRound}. Çözüm Turu`;
+            showToast(`${currentStudyRound}. Çözüm Turu başladı! Kalan ${remainingCount} soru sıfırlandı.`, false);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        function fullResetCurrentPool() {
+            const pool = getCurrentPoolQuestions();
+            pool.forEach(q => {
+                questionStates[q.id] = {
+                    selectedOption: null,
+                    solutionOpen: false,
+                    peekedSolutionBeforeCorrect: false,
+                    hadWrongAttempt: false,
+                    isHidden: false
+                };
+            });
+            currentStudyRound = 1;
+            currentFilterMode = "active";
+            document.getElementById("roundBadge").textContent = `1. Çözüm Turu`;
+            showToast("Tüm soru işaretleri ve öğrenilenler sıfırlandı.", false);
+            renderAll();
+            saveAllToPersistentStorage();
+            if (window.saveUserProgressToCloud) window.saveUserProgressToCloud();
+        }
+
+        /**
+         * ============================================================================
+         * YEDEKLEME VE GERİ YÜKLEME MERKEZİ (UYGULAMAYA GEÇİŞ İÇİN TAM UYUMLU)
+         * ============================================================================
+         */
+        function toggleBackupModal(show) {
+            const modal = document.getElementById("backupModal");
+            if (show) {
+                updateBackupModalStats();
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+            } else {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
+        }
+
+        function updateBackupModalStats() {
+            const totalCoursesEl = document.getElementById("statTotalCourses");
+            const totalQuestionsEl = document.getElementById("statTotalQuestions");
+            const customQuestionsEl = document.getElementById("statCustomQuestions");
+            if (!totalCoursesEl) return;
+
+            let totalQ = 0;
+            let customQ = 0;
+            COURSE_DATABASE.forEach(c => {
+                c.exams.forEach(ex => {
+                    totalQ += ex.questions.length;
+                    ex.questions.forEach(q => {
+                        if (!q.isBuiltIn) customQ++;
+                    });
+                });
+            });
+
+            totalCoursesEl.textContent = COURSE_DATABASE.length;
+            totalQuestionsEl.textContent = totalQ;
+            customQuestionsEl.textContent = customQ;
+        }
+
+        function exportFullDatabaseBackup() {
+            const snapshot = buildPersistentSnapshot();
+            const dataStr = JSON.stringify(snapshot, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `aof_soru_havuzu_yedek_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast("Tüm soru havuzunuz ve ilerlemeniz yedek dosyası olarak indirildi!", false);
+        }
+
+        async function importFullDatabaseBackup(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const parsed = JSON.parse(text);
+
+                // Eğer tam yedek dosyasıysa (customQuestions veya questionStates içeriyorsa)
+                if (parsed && (Array.isArray(parsed.customQuestions) || parsed.questionStates)) {
+                    applyPersistentSnapshot(parsed);
+                    populateCourseSelector();
+                    renderAll();
+                    saveAllToPersistentStorage();
+
+                    if (window.saveCustomQuestionsBatchToCloud && Array.isArray(parsed.customQuestions)) {
+                        window.saveCustomQuestionsBatchToCloud(parsed.customQuestions);
+                    }
+                    if (window.saveUserProgressToCloud) {
+                        window.saveUserProgressToCloud();
+                    }
+
+                    toggleBackupModal(false);
+                    showToast("Yedek dosyası başarıyla geri yüklendi ve kalıcı hafızaya kaydedildi!", false);
+                } else {
+                    // Normal bir soru JSON dosyasıysa doğrudan aktif derse soru olarak ekle
+                    const { questions, detectedCourseName } = parseQuestionsFromJsonData(parsed);
+                    if (questions.length > 0) {
+                        stagedNewQuestions = questions;
+                        if (detectedCourseName) applyDetectedCourseNameIfPresent(detectedCourseName);
+                        saveParsedQuestionsToPool();
+                        toggleBackupModal(false);
+                    } else {
+                        showToast("Dosyada geçerli yedek veya soru verisi bulunamadı.", false);
+                    }
+                }
+            } catch (err) {
+                console.error("Yedek yükleme hatası:", err);
+                showToast("Yedek dosyası okunamadı: Geçersiz JSON formatı.", false);
+            }
+            event.target.value = "";
+        }
+
+        /**
+         * ============================================================================
+         * ARAYÜZ RENDER FONKSİYONLARI
+         * ============================================================================
+         */
+        function renderAll() {
+            const pool = getCurrentPoolQuestions();
+            updateStatsAndCounters(pool);
+            renderJumpGrid(pool);
+            renderQuestionCards(pool);
+            renderAnswerKeyModalContent(pool);
+        }
+
+        function updateStatsAndCounters(pool) {
+            let activeCount = 0;
+            let needsReviewCount = 0;
+            let hiddenCount = 0;
+
+            pool.forEach(q => {
+                const st = ensureQuestionState(q.id);
+                if (st.isHidden) {
+                    hiddenCount++;
+                } else {
+                    activeCount++;
+                }
+
+                if (!st.isHidden && isNeedsReview(q, st)) {
+                    needsReviewCount++;
+                }
+            });
+
+            // Üst filtre sayaçları
+            document.getElementById("count-active").textContent = activeCount;
+            document.getElementById("count-needsReview").textContent = needsReviewCount;
+            document.getElementById("count-hidden").textContent = hiddenCount;
+            document.getElementById("count-all").textContent = pool.length;
+
+            // Footer bilgisi
+            const course = COURSE_DATABASE.find(c => c.courseId === currentCourseId);
+            if (course) {
+                document.getElementById("footerPoolInfo").textContent = `${course.courseName} (${pool.length} Soru)`;
+            }
+
+            // Aktif filtre butonu stili
+            const modes = ['active', 'needsReview', 'hidden', 'all'];
+            modes.forEach(m => {
+                const btn = document.getElementById(`filterBtn-${m}`);
+                const badge = document.getElementById(`count-${m}`);
+                if (!btn || !badge) return;
+                if (m === currentFilterMode) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-indigo-600 text-white shadow-sm";
+                    badge.className = "px-1.5 py-0.5 rounded-md bg-indigo-800/60 text-white text-[11px]";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200";
+                    badge.className = "px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-700 text-[11px]";
+                }
+            });
+        }
+
+        function renderJumpGrid(pool) {
+            const grid = document.getElementById("questionJumpGrid");
+            grid.innerHTML = pool.map(q => {
+                const st = ensureQuestionState(q.id);
+                let colorClasses = "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200";
+
+                if (st.isHidden) {
+                    colorClasses = "bg-slate-200 text-slate-400 border-slate-300 line-through opacity-60";
+                } else if (st.selectedOption) {
+                    if (st.selectedOption === q.correctAnswer) {
+                        if (st.peekedSolutionBeforeCorrect || st.hadWrongAttempt) {
+                            colorClasses = "bg-amber-100 text-amber-800 border-amber-300 font-bold";
+                        } else {
+                            colorClasses = "bg-emerald-500 text-white border-emerald-600 font-bold shadow-2xs";
+                        }
+                    } else {
+                        colorClasses = "bg-rose-500 text-white border-rose-600 font-bold";
+                    }
+                } else if (st.peekedSolutionBeforeCorrect) {
+                    colorClasses = "bg-amber-50 text-amber-700 border-amber-300";
+                }
+
+                return `
+                    <button onclick="jumpToQuestion('${q.id}')" class="w-8 h-8 rounded-lg border text-xs transition flex items-center justify-center ${colorClasses}" title="Soru ${q.number}">
+                        ${q.number}
+                    </button>
+                `;
+            }).join("");
+        }
+
+        function jumpToQuestion(questionId) {
+            const st = ensureQuestionState(questionId);
+            if (st.isHidden && currentFilterMode === "active") {
+                setFilterMode("all");
+            }
+            setTimeout(() => {
+                const el = document.getElementById(`card-${questionId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el.classList.add("ring-2", "ring-indigo-500");
+                    setTimeout(() => el.classList.remove("ring-2", "ring-indigo-500"), 1400);
+                }
+            }, 50);
+        }
+
+        function renderQuestionCards(pool) {
+            const container = document.getElementById("questionsContainer");
+            const emptyState = document.getElementById("emptyStateContainer");
+
+            const filteredQuestions = pool.filter(q => {
+                const st = ensureQuestionState(q.id);
+                if (currentFilterMode === "active") return !st.isHidden;
+                if (currentFilterMode === "needsReview") return !st.isHidden && isNeedsReview(q, st);
+                if (currentFilterMode === "hidden") return st.isHidden;
+                return true; // 'all'
+            });
+
+            if (filteredQuestions.length === 0) {
+                container.innerHTML = "";
+                emptyState.classList.remove("hidden");
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+
+            container.innerHTML = filteredQuestions.map(q => {
+                const st = ensureQuestionState(q.id);
+                const isAnswered = st.selectedOption !== null;
+                const isCorrect = st.selectedOption === q.correctAnswer;
+                const selfSolved = isSelfSolvedCorrectly(q, st);
+
+                // Kart kenarlık ve durum rozeti
+                let cardBorder = "border-slate-200";
+                let statusBadgeHtml = "";
+
+                if (st.isHidden) {
+                    cardBorder = "border-slate-300 bg-slate-50/70";
+                    statusBadgeHtml = `
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-200 text-slate-700">
+                            <i class="fa-solid fa-eye-slash"></i> Gizlendi
+                        </span>
+                    `;
+                } else if (isAnswered) {
+                    if (isCorrect) {
+                        if (selfSolved) {
+                            cardBorder = "border-emerald-300";
+                            statusBadgeHtml = `
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                    <i class="fa-solid fa-circle-check"></i> Çözümsüz Doğru
+                                </span>
+                            `;
+                        } else {
+                            cardBorder = "border-amber-300";
+                            statusBadgeHtml = `
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                                    <i class="fa-solid fa-lightbulb"></i> Çözümle Doğru
+                                </span>
+                            `;
+                        }
+                    } else {
+                        cardBorder = "border-rose-300";
+                        statusBadgeHtml = `
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                                <i class="fa-solid fa-circle-xmark"></i> Yanlış (${q.correctAnswer} olmalı)
+                            </span>
+                        `;
+                    }
+                } else if (st.peekedSolutionBeforeCorrect) {
+                    cardBorder = "border-amber-200";
+                    statusBadgeHtml = `
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <i class="fa-regular fa-eye"></i> Çözüme Bakıldı
+                        </span>
+                    `;
+                }
+
+                // Şıkları oluştur (A, B, C, D, E)
+                const optionsHtml = ['A', 'B', 'C', 'D', 'E'].map(optKey => {
+                    const optText = (q.options && q.options[optKey]) || "";
+                    const isThisSelected = st.selectedOption === optKey;
+                    const isThisCorrect = q.correctAnswer === optKey;
+
+                    let btnStyle = "bg-white hover:bg-slate-50 border-slate-200 text-slate-800";
+                    let badgeStyle = "bg-slate-100 text-slate-700 border-slate-300";
+                    let rightIcon = "";
+
+                    if (isThisSelected) {
+                        if (isThisCorrect) {
+                            btnStyle = "bg-emerald-50/90 border-emerald-500 text-emerald-950 ring-1 ring-emerald-500 font-medium";
+                            badgeStyle = "bg-emerald-600 text-white border-emerald-600";
+                            rightIcon = `<i class="fa-solid fa-circle-check text-emerald-600 text-base ml-auto shrink-0"></i>`;
+                        } else {
+                            btnStyle = "bg-rose-50/90 border-rose-500 text-rose-950 ring-1 ring-rose-500 font-medium";
+                            badgeStyle = "bg-rose-600 text-white border-rose-600";
+                            rightIcon = `<i class="fa-solid fa-circle-xmark text-rose-600 text-base ml-auto shrink-0"></i>`;
+                        }
+                    } else if ((isAnswered && !isCorrect && isThisCorrect) || (st.solutionOpen && isThisCorrect)) {
+                        // Kullanıcı yanlış işaretlediyse veya çözümü açtıysa doğru şıkkı yeşil çerçeveyle belli et
+                        btnStyle = "bg-emerald-50/50 border-emerald-400 text-emerald-900 border-dashed";
+                        badgeStyle = "bg-emerald-100 text-emerald-800 border-emerald-400 font-bold";
+                        rightIcon = `<span class="ml-auto text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">Doğru Cevap</span>`;
+                    }
+
+                    return `
+                        <button
+                            type="button"
+                            onclick="selectOption('${q.id}', '${optKey}')"
+                            class="w-full text-left p-3 sm:p-3.5 rounded-xl border transition flex items-center gap-3 cursor-pointer ${btnStyle}"
+                        >
+                            <span class="w-7 h-7 rounded-lg border text-xs font-bold flex items-center justify-center shrink-0 transition ${badgeStyle}">
+                                ${optKey}
+                            </span>
+                            <span class="text-xs sm:text-sm leading-relaxed">${optText}</span>
+                            ${rightIcon}
+                        </button>
+                    `;
+                }).join("");
+
+                // Soru metnindeki satır sonlarını <br> ile değiştir
+                const formattedText = (q.text || "").replace(/\n/g, "<br>");
+
+                return `
+                    <article id="card-${q.id}" class="bg-white rounded-2xl border ${cardBorder} p-5 sm:p-6 shadow-xs card-transition">
+                        <!-- Card Top Header -->
+                        <div class="flex items-center justify-between gap-2 pb-3.5 mb-4 border-b border-slate-100 flex-wrap">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-2xs">
+                                    ${q.number}
+                                </span>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+                                            ${q.courseName || "AÖF Dersi"}
+                                        </span>
+                                        ${!q.isBuiltIn ? `<span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Kayıtlı Soru</span>` : ''}
+                                    </div>
+                                    <span class="text-xs text-slate-400 block">
+                                        ${q.unit || "Çıkmış Sınav Sorusu"}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${statusBadgeHtml}
+                            </div>
+                        </div>
+
+                        <!-- Extra HTML (Tables, Series, Lists) -->
+                        ${q.extraHtml ? q.extraHtml : ""}
+
+                        <!-- Question Stem -->
+                        <div class="text-sm sm:text-base font-medium text-slate-900 leading-relaxed mb-5">
+                            ${formattedText}
+                        </div>
+
+                        <!-- Interactive Options (A-E) -->
+                        <div class="space-y-2.5 mb-5">
+                            ${optionsHtml}
+                        </div>
+
+                        <!-- Bottom Corner Buttons: Left = Çözüm, Right = Soruyu Gizle -->
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                            <!-- Left Corner: Çözüm Butonu -->
+                            <button
+                                type="button"
+                                onclick="toggleSolution('${q.id}')"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                                    st.solutionOpen
+                                        ? 'bg-amber-500 text-white shadow-xs'
+                                        : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                                }"
+                            >
+                                <i class="fa-solid fa-lightbulb"></i>
+                                <span>${st.solutionOpen ? 'Çözümü Kapat' : 'Çözüm'}</span>
+                            </button>
+
+                            <!-- Right Corner: Soruyu Gizle Butonu -->
+                            <button
+                                type="button"
+                                onclick="toggleHideQuestion('${q.id}')"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+                                    st.isHidden
+                                        ? 'bg-slate-800 text-white hover:bg-slate-700'
+                                        : selfSolved
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                                }"
+                                title="Çözüme bakmadan bildiğin soruyu gizleyerek sonraki turda sadece bilemediklerini çözebilirsin"
+                            >
+                                <i class="fa-solid ${st.isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                                <span>${st.isHidden ? 'Gizlemeyi Kaldır' : 'Soruyu Gizle'}</span>
+                            </button>
+                        </div>
+
+                        <!-- Collapsible Solution Box -->
+                        ${st.solutionOpen ? `
+                            <div class="mt-4 p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-xs sm:text-sm text-slate-800 leading-relaxed solution-enter">
+                                <div class="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-amber-200/80">
+                                    <span class="font-bold text-amber-900 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-graduation-cap text-amber-600"></i>
+                                        Detaylı Çözüm ve Cevap Anahtarı
+                                    </span>
+                                    ${st.selectedOption !== q.correctAnswer && q.correctAnswer !== "İPTAL" ? `
+                                        <button
+                                            type="button"
+                                            onclick="selectOption('${q.id}', '${q.correctAnswer}')"
+                                            class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition cursor-pointer"
+                                        >
+                                            Doğru Şıkkı İşaretle (${q.correctAnswer})
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <div class="space-y-1.5">
+                                    ${q.explanation}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function renderAnswerKeyModalContent(pool) {
+            const grid = document.getElementById("answerKeyGrid");
+            if (!grid) return;
+
+            grid.innerHTML = pool.map(q => {
+                const st = ensureQuestionState(q.id);
+                let boxClass = "bg-slate-50 border-slate-200 text-slate-800";
+                if (st.selectedOption) {
+                    boxClass = st.selectedOption === q.correctAnswer
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                        : "bg-rose-50 border-rose-300 text-rose-900";
+                }
+                return `
+                    <div class="p-2.5 rounded-xl border text-center ${boxClass}">
+                        <div class="text-[11px] text-slate-500 font-semibold">${q.number}. Soru</div>
+                        <div class="text-base font-extrabold mt-0.5">${q.correctAnswer}</div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function toggleAnswerKeyModal(show) {
+            const modal = document.getElementById("answerKeyModal");
+            if (show) {
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+            } else {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
+        }
+
+        function openResetModal() {
+            const modal = document.getElementById("resetModal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById("resetModal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+
+        /**
+         * ============================================================================
+         * JSON SORU EKLEME SİSTEMİ (DOSYA YÜKLEME VE DOĞRUDAN YAPIŞTIRMA)
+         * ============================================================================
+         */
+        let stagedNewQuestions = [];
+
+        function toggleAddQuestionModal(show) {
+            const modal = document.getElementById("addQuestionModal");
+            if (show) {
+                populateAddModalCourses();
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+            } else {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            }
+        }
+
+        function populateAddModalCourses() {
+            const sel = document.getElementById("addTargetCourseSelect");
+            let html = COURSE_DATABASE.map(c =>
+                `<option value="${c.courseId}" ${c.courseId === currentCourseId ? 'selected' : ''}>${c.courseName}</option>`
+            ).join("");
+            html += `<option value="__new__">+ Yeni Ders Oluştur...</option>`;
+            sel.innerHTML = html;
+            handleAddCourseSelectChange();
+        }
+
+        function handleAddCourseSelectChange() {
+            const val = document.getElementById("addTargetCourseSelect").value;
+            const newCourseInput = document.getElementById("newCourseNameInput");
+            if (val === "__new__") {
+                newCourseInput.classList.remove("hidden");
+            } else {
+                newCourseInput.classList.add("hidden");
+            }
+        }
+
+        function toggleSampleJsonBox() {
+            const box = document.getElementById("sampleJsonBox");
+            box.classList.toggle("hidden");
+        }
+
+        function copySampleJson() {
+            const sampleText = document.getElementById("sampleJsonPre").innerText;
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = sampleText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempTextArea);
+            showToast("Örnek JSON formatı panoya kopyalandı!", false);
+        }
+
+        function clearJsonPasteInput() {
+            document.getElementById("jsonPasteInput").value = "";
+            const statusEl = document.getElementById("jsonUploadStatus");
+            statusEl.classList.add("hidden");
+        }
+
+        /**
+         * Esnek JSON soru dönüştürücü:
+         * Hem İngilizce (text, options, correctAnswer, explanation, unit)
+         * hem de Türkçe (soru, siklar/secenekler, dogruCevap/dogru_cevap/cevap, cozum/aciklama, unite/konu)
+         * alan adlarını destekler.
+         */
+        function normalizeSingleJsonQuestion(rawItem, indexNumber) {
+            if (!rawItem || typeof rawItem !== "object") return null;
+
+            const text = String(
+                rawItem.text ??
+                rawItem.question ??
+                rawItem.soru ??
+                rawItem.soruMetni ??
+                rawItem.stem ??
+                ""
+            ).trim();
+
+            const rawOpts = rawItem.options || rawItem.siklar || rawItem.secenekler || rawItem.choices || {};
+            const options = { A: "", B: "", C: "", D: "", E: "" };
+
+            if (Array.isArray(rawOpts)) {
+                const keys = ["A", "B", "C", "D", "E"];
+                rawOpts.forEach((val, idx) => {
+                    if (idx < 5 && val !== undefined && val !== null) {
+                        options[keys[idx]] = String(val).replace(/^[A-E]\)\s*/i, "").trim();
+                    }
+                });
+            } else if (typeof rawOpts === "object") {
+                ["A", "B", "C", "D", "E"].forEach(k => {
+                    const val = rawOpts[k] ?? rawOpts[k.toLowerCase()] ?? rawItem[k] ?? rawItem[k.toLowerCase()] ?? "";
+                    options[k] = String(val).replace(new RegExp(`^${k}\\)\\s*`, "i"), "").trim();
+                });
+            }
+
+            if (!text && !options.A && !options.B) return null;
+
+            // Doğru cevabı normalize et ("A", "B)", "C şıkkı", "İPTAL" veya 0..4 indeks)
+            let rawAns = rawItem.correctAnswer ?? rawItem.answer ?? rawItem.dogruCevap ?? rawItem.dogru_cevap ?? rawItem.cevap ?? "A";
+            let correctAnswer = "A";
+
+            if (typeof rawAns === "number" && rawAns >= 0 && rawAns <= 4) {
+                correctAnswer = ["A", "B", "C", "D", "E"][rawAns];
+            } else {
+                const strAns = String(rawAns).trim().toUpperCase();
+                if (strAns === "İPTAL" || strAns === "IPTAL") {
+                    correctAnswer = "İPTAL";
+                } else {
+                    const letterMatch = strAns.match(/\b([A-E])\b/) || strAns.match(/^([A-E])/);
+                    if (letterMatch) {
+                        correctAnswer = letterMatch[1];
+                    } else {
+                        for (const k of ["A", "B", "C", "D", "E"]) {
+                            if (options[k] && options[k].toLowerCase() === String(rawAns).trim().toLowerCase()) {
+                                correctAnswer = k;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            const unit = String(
+                rawItem.unit ??
+                rawItem.unite ??
+                rawItem.konu ??
+                rawItem.topic ??
+                rawItem.sinav ??
+                "Çıkmış Sınav Sorusu"
+            ).trim();
+
+            const extraHtml = String(
+                rawItem.extraHtml ??
+                rawItem.ekHtml ??
+                rawItem.tablo ??
+                rawItem.tableHtml ??
+                ""
+            ).trim();
+
+            let explanation = String(
+                rawItem.explanation ??
+                rawItem.cozum ??
+                rawItem.aciklama ??
+                rawItem.solution ??
+                ""
+            ).trim();
+
+            const correctOptText = options[correctAnswer] || rawItem.dogru_cevap_metni || "";
+            if (!explanation) {
+                explanation = correctAnswer === "İPTAL"
+                    ? `<p><strong>Doğru Cevap: İPTAL (Bu soru iptal edilmiştir.)</strong></p>`
+                    : `<p><strong>Doğru Cevap: ${correctAnswer}) ${correctOptText}</strong></p>`;
+            } else if (!explanation.includes("<p") && !explanation.includes("<ul") && !explanation.includes("<div")) {
+                explanation = `<p class="mb-1.5"><strong>Doğru Cevap: ${correctAnswer}) ${correctOptText}</strong></p><p>${explanation.replace(/\n/g, "<br>")}</p>`;
+            }
+
+            return {
+                number: indexNumber,
+                unit,
+                extraHtml,
+                text,
+                options,
+                correctAnswer,
+                explanation
+            };
+        }
+
+        /**
+         * Ham JSON verisini soru listesine dönüştürür. Ayrıca varsa ders adını (courseName) algılar.
+         */
+        function parseQuestionsFromJsonData(parsedJson) {
+            let rawList = [];
+            let detectedCourseName = null;
+
+            if (Array.isArray(parsedJson)) {
+                parsedJson.forEach(item => {
+                    if (item && Array.isArray(item.questions)) {
+                        if (item.courseName && !detectedCourseName) detectedCourseName = item.courseName;
+                        rawList.push(...item.questions);
+                    } else if (item && Array.isArray(item.sorular)) {
+                        if ((item.dersAdi || item.courseName) && !detectedCourseName) {
+                            detectedCourseName = item.dersAdi || item.courseName;
+                        }
+                        rawList.push(...item.sorular);
+                    } else if (item && Array.isArray(item.exams)) {
+                        if (item.courseName && !detectedCourseName) detectedCourseName = item.courseName;
+                        item.exams.forEach(ex => {
+                            if (ex && Array.isArray(ex.questions)) rawList.push(...ex.questions);
+                        });
+                    } else {
+                        if (item && (item.ders || item.dersAdi || item.courseName) && !detectedCourseName) {
+                            detectedCourseName = item.ders || item.dersAdi || item.courseName;
+                        }
+                        rawList.push(item);
+                    }
+                });
+            } else if (parsedJson && typeof parsedJson === "object") {
+                if (parsedJson.courseName || parsedJson.dersAdi || parsedJson.ders) {
+                    detectedCourseName = parsedJson.courseName || parsedJson.dersAdi || parsedJson.ders;
+                }
+                if (Array.isArray(parsedJson.questions)) {
+                    rawList = parsedJson.questions;
+                } else if (Array.isArray(parsedJson.sorular)) {
+                    rawList = parsedJson.sorular;
+                } else if (Array.isArray(parsedJson.data)) {
+                    rawList = parsedJson.data;
+                } else if (Array.isArray(parsedJson.exams)) {
+                    parsedJson.exams.forEach(ex => {
+                        if (ex && Array.isArray(ex.questions)) rawList.push(...ex.questions);
+                    });
+                } else {
+                    rawList = [parsedJson];
+                }
+            }
+
+            const questions = [];
+            rawList.forEach(item => {
+                const normalized = normalizeSingleJsonQuestion(item, questions.length + 1);
+                if (normalized) {
+                    questions.push(normalized);
+                }
+            });
+
+            return { questions, detectedCourseName };
+        }
+
+        function applyDetectedCourseNameIfPresent(detectedCourseName) {
+            if (!detectedCourseName) return;
+            const cleanName = String(detectedCourseName).trim().toUpperCase();
+            if (!cleanName) return;
+
+            const existing = COURSE_DATABASE.find(c => c.courseName.toUpperCase() === cleanName);
+            const sel = document.getElementById("addTargetCourseSelect");
+            const newCourseInput = document.getElementById("newCourseNameInput");
+
+            if (existing) {
+                sel.value = existing.courseId;
+                handleAddCourseSelectChange();
+            } else if (sel.value === "__new__" && !newCourseInput.value.trim()) {
+                newCourseInput.value = cleanName;
+            }
+        }
+
+        /**
+         * .json dosyası seçildiğinde çalışır
+         */
+        async function handleJsonFileUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const statusEl = document.getElementById("jsonUploadStatus");
+            const quickAddBox = document.getElementById("quickAddActionBox");
+            const quickAddBtnText = document.getElementById("quickAddBtnText");
+            const autoIncludeToggle = document.getElementById("autoIncludeToggle");
+
+            statusEl.classList.remove("hidden");
+            statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5 text-indigo-600"></i> JSON dosyası okunuyor...`;
+            if (quickAddBox) quickAddBox.classList.add("hidden");
+
+            stagedNewQuestions = [];
+            let errorMessage = null;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    const textContent = await file.text();
+                    const parsedJson = JSON.parse(textContent);
+                    const { questions, detectedCourseName } = parseQuestionsFromJsonData(parsedJson);
+
+                    if (detectedCourseName) {
+                        applyDetectedCourseNameIfPresent(detectedCourseName);
+                    }
+                    if (questions.length > 0) {
+                        stagedNewQuestions.push(...questions);
+                    }
+                } catch (err) {
+                    console.error("JSON dosya okuma hatası:", err);
+                    errorMessage = `${file.name}: Geçersiz JSON formatı (${err.message})`;
+                }
+            }
+
+            stagedNewQuestions.forEach((q, idx) => {
+                q.number = idx + 1;
+            });
+
+            event.target.value = "";
+
+            if (stagedNewQuestions.length > 0) {
+                const count = stagedNewQuestions.length;
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> <strong>${count} soru</strong> JSON dosyasından başarıyla yüklendi!`;
+
+                if (autoIncludeToggle && autoIncludeToggle.checked) {
+                    saveParsedQuestionsToPool();
+                    return;
+                }
+
+                if (quickAddBox && quickAddBtnText) {
+                    quickAddBtnText.textContent = `Yüklenen ${count} Soruyu Şimdi Derse Ekle`;
+                    quickAddBox.classList.remove("hidden");
+                }
+                renderParsedPreview();
+            } else {
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-600 mr-1"></i> ${errorMessage || "JSON dosyasından geçerli soru bulunamadı."}`;
+            }
+        }
+
+        /**
+         * Textarea'ya yapıştırılan JSON metnini çözümler
+         */
+        function handleJsonPasteParse() {
+            const rawText = document.getElementById("jsonPasteInput").value.trim();
+            const statusEl = document.getElementById("jsonUploadStatus");
+            const quickAddBox = document.getElementById("quickAddActionBox");
+            const quickAddBtnText = document.getElementById("quickAddBtnText");
+            const autoIncludeToggle = document.getElementById("autoIncludeToggle");
+
+            statusEl.classList.remove("hidden");
+
+            if (!rawText) {
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-600 mr-1"></i> Lütfen önce JSON metnini kutuya yapıştırın veya bir .json dosyası seçin.`;
+                return;
+            }
+
+            try {
+                const cleanedJsonText = rawText
+                    .replace(/^```(?:json)?\s*/i, "")
+                    .replace(/\s*```$/, "")
+                    .trim();
+
+                const parsedJson = JSON.parse(cleanedJsonText);
+                const { questions, detectedCourseName } = parseQuestionsFromJsonData(parsedJson);
+
+                if (detectedCourseName) {
+                    applyDetectedCourseNameIfPresent(detectedCourseName);
+                }
+
+                if (questions.length === 0) {
+                    statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-600 mr-1"></i> JSON geçerli ancak içinde soru nesnesi bulunamadı.`;
+                    return;
+                }
+
+                stagedNewQuestions = questions.map((q, idx) => ({
+                    ...q,
+                    number: idx + 1
+                }));
+
+                const count = stagedNewQuestions.length;
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> <strong>${count} soru</strong> başarıyla çözümlendi!`;
+
+                if (autoIncludeToggle && autoIncludeToggle.checked) {
+                    saveParsedQuestionsToPool();
+                    return;
+                }
+
+                if (quickAddBox && quickAddBtnText) {
+                    quickAddBtnText.textContent = `Yüklenen ${count} Soruyu Şimdi Derse Ekle`;
+                    quickAddBox.classList.remove("hidden");
+                }
+                renderParsedPreview();
+            } catch (err) {
+                console.error("JSON ayrıştırma hatası:", err);
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-600 mr-1"></i> JSON Sözdizimi Hatası: ${err.message}`;
+            }
+        }
+
+        function renderParsedPreview() {
+            const section = document.getElementById("parsedPreviewSection");
+            const countEl = document.getElementById("parsedPreviewCount");
+            const listEl = document.getElementById("parsedPreviewList");
+            const quickAddBox = document.getElementById("quickAddActionBox");
+            const quickAddBtnText = document.getElementById("quickAddBtnText");
+
+            if (stagedNewQuestions.length === 0) {
+                section.classList.add("hidden");
+                if (quickAddBox) quickAddBox.classList.add("hidden");
+                return;
+            }
+
+            section.classList.remove("hidden");
+            countEl.textContent = `${stagedNewQuestions.length} Soru Hazır (İsterseniz Metinleri ve Şıkları Düzenleyebilirsiniz)`;
+            if (quickAddBox && quickAddBtnText) {
+                quickAddBtnText.textContent = `Yüklenen ${stagedNewQuestions.length} Soruyu Şimdi Derse Ekle`;
+                quickAddBox.classList.remove("hidden");
+            }
+
+            listEl.innerHTML = stagedNewQuestions.map((q, idx) => `
+                <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 text-xs">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-extrabold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-lg">
+                            ${q.number}. Soru
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-slate-600">Doğru Cevap:</label>
+                            <select onchange="updateStagedQuestionAnswer(${idx}, this.value)" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 font-bold text-emerald-700">
+                                ${['A', 'B', 'C', 'D', 'E'].map(letter => `
+                                    <option value="${letter}" ${q.correctAnswer === letter ? 'selected' : ''}>${letter} Şıkkı</option>
+                                `).join("")}
+                            </select>
+                            <button type="button" onclick="removeStagedQuestion(${idx})" class="w-7 h-7 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-600 flex items-center justify-center" title="Bu soruyu listeden çıkar">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    ${q.extraHtml ? `<div class="p-2 bg-white rounded-lg border border-slate-200">${q.extraHtml}</div>` : ""}
+
+                    <div>
+                        <textarea onchange="updateStagedQuestionText(${idx}, this.value)" rows="2" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500">${q.text}</textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        ${['A', 'B', 'C', 'D', 'E'].map(optKey => `
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-6 h-6 rounded-md ${q.correctAnswer === optKey ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'} font-bold flex items-center justify-center shrink-0">${optKey}</span>
+                                <input type="text" value="${(q.options[optKey] || '').replace(/"/g, '&quot;')}" onchange="updateStagedQuestionOption(${idx}, '${optKey}', this.value)" class="w-full bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-700">
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function updateStagedQuestionText(index, newText) {
+            if (!stagedNewQuestions[index]) return;
+            stagedNewQuestions[index].text = newText.trim();
+        }
+
+        function updateStagedQuestionOption(index, optKey, newVal) {
+            if (!stagedNewQuestions[index]) return;
+            stagedNewQuestions[index].options[optKey] = newVal.trim();
+        }
+
+        function removeStagedQuestion(index) {
+            stagedNewQuestions.splice(index, 1);
+            stagedNewQuestions.forEach((q, idx) => { q.number = idx + 1; });
+            renderParsedPreview();
+        }
+
+        function updateStagedQuestionAnswer(index, newAns) {
+            if (!stagedNewQuestions[index]) return;
+            stagedNewQuestions[index].correctAnswer = newAns;
+            const optText = stagedNewQuestions[index].options[newAns] || "";
+            if (!stagedNewQuestions[index].explanation || stagedNewQuestions[index].explanation.length < 60) {
+                stagedNewQuestions[index].explanation = `<p><strong>Doğru Cevap: ${newAns}) ${optText}</strong></p>`;
+            }
+            renderParsedPreview();
+        }
+
+        function getOrCreateTargetCourse() {
+            const courseSelectVal = document.getElementById("addTargetCourseSelect").value;
+            let targetCourse;
+
+            if (courseSelectVal === "__new__") {
+                const rawName = document.getElementById("newCourseNameInput").value.trim() || "YENİ DERS";
+                const newId = "ders-" + Date.now();
+                targetCourse = {
+                    courseId: newId,
+                    courseName: rawName.toUpperCase(),
+                    isBuiltIn: false,
+                    exams: [
+                        {
+                            examId: `${newId}-pool`,
+                            examTitle: `${rawName.toUpperCase()} Soru Havuzu`,
+                            questions: []
+                        }
+                    ]
+                };
+                COURSE_DATABASE.push(targetCourse);
+                if (window.saveCustomCourseToCloud) {
+                    window.saveCustomCourseToCloud(targetCourse.courseId, targetCourse.courseName);
+                }
+            } else {
+                targetCourse = COURSE_DATABASE.find(c => c.courseId === courseSelectVal) || COURSE_DATABASE[0];
+                if (targetCourse.exams.length === 0) {
+                    targetCourse.exams.push({
+                        examId: `${targetCourse.courseId}-pool`,
+                        examTitle: `${targetCourse.courseName} Soru Havuzu`,
+                        questions: []
+                    });
+                }
+            }
+
+            return { targetCourse, targetPool: targetCourse.exams[0] };
+        }
+
+        function saveParsedQuestionsToPool() {
+            if (stagedNewQuestions.length === 0) return;
+
+            const { targetCourse, targetPool } = getOrCreateTargetCourse();
+            const currentTotal = targetCourse.exams.reduce((acc, ex) => acc + ex.questions.length, 0);
+            const newlyCreatedQuestions = [];
+
+            stagedNewQuestions.forEach((q, idx) => {
+                const newQNumber = currentTotal + idx + 1;
+                const newQObj = {
+                    id: `${targetCourse.courseId}-q-${newQNumber}-${Date.now()}-${idx}`,
+                    courseId: targetCourse.courseId,
+                    courseName: targetCourse.courseName,
+                    number: newQNumber,
+                    unit: q.unit || "Çıkmış Sınav Sorusu",
+                    text: q.text,
+                    extraHtml: q.extraHtml || "",
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    explanation: q.explanation,
+                    createdAt: Date.now() + idx,
+                    isBuiltIn: false
+                };
+                targetPool.questions.push(newQObj);
+                newlyCreatedQuestions.push(newQObj);
+            });
+
+            const addedCount = stagedNewQuestions.length;
+            currentCourseId = targetCourse.courseId;
+            currentFilterMode = "active";
+            stagedNewQuestions = [];
+
+            document.getElementById("parsedPreviewSection").classList.add("hidden");
+            document.getElementById("jsonUploadStatus").classList.add("hidden");
+            document.getElementById("jsonPasteInput").value = "";
+            const quickAddBox = document.getElementById("quickAddActionBox");
+            if (quickAddBox) quickAddBox.classList.add("hidden");
+
+            populateCourseSelector();
+            toggleAddQuestionModal(false);
+            renderAll();
+
+            // Cihaz hafızasına anında kaydet (LocalStorage + IndexedDB)
+            saveAllToPersistentStorage();
+
+            // Bulut senkronizasyonu varsa oraya da kaydet
+            if (window.saveCustomQuestionsBatchToCloud) {
+                window.saveCustomQuestionsBatchToCloud(newlyCreatedQuestions);
+            }
+            if (window.saveUserProgressToCloud) {
+                window.saveUserProgressToCloud();
+            }
+
+            // Yeni eklenen ilk soruya yumuşak kaydır
+            if (newlyCreatedQuestions.length > 0) {
+                setTimeout(() => {
+                    jumpToQuestion(newlyCreatedQuestions[0].id);
+                }, 120);
+            }
+
+            showToast(`${targetCourse.courseName} dersine ${addedCount} yeni soru kalıcı olarak kaydedildi!`, false);
+        }
+
+        function showToast(message, showUndo = false) {
+            const toast = document.getElementById("toastNotification");
+            const msgEl = document.getElementById("toastMessage");
+            const undoBtn = document.getElementById("toastUndoBtn");
+
+            msgEl.textContent = message;
+            if (showUndo) {
+                undoBtn.classList.remove("hidden");
+                undoBtn.onclick = undoLastHide;
+            } else {
+                undoBtn.classList.add("hidden");
+            }
+
+            toast.classList.remove("hidden");
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                hideToast();
+            }, 4000);
+        }
+
+        function hideToast() {
+            const toast = document.getElementById("toastNotification");
+            toast.classList.add("hidden");
+        }
+
+        // Uygulamayı başlat
+        window.onload = initApp;
+    </script>
+
+    <!-- Ek Bulut Senkronizasyon Modülü (Varsa Yerel Hafıza ile Birleştirir) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isSavingBatchToCloud = false;
+
+        async function initCloudStorage() {
+            if (!firebaseConfig) return;
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (currentUser) {
+                        setupRealtimeCloudSync(currentUser.uid);
+                    }
+                });
+            } catch (err) {
+                console.warn("Bulut senkronizasyonu devre dışı (Yerel kalıcı hafıza aktif):", err);
+            }
+        }
+
+        function setupRealtimeCloudSync(userId) {
+            if (!currentUser || !db) return;
+
+            // 1. Kullanıcının eklediği dersleri dinle ve yerel veritabanıyla birleştir
+            const coursesCol = collection(db, 'artifacts', appId, 'users', userId, 'custom_courses');
+            onSnapshot(coursesCol, (snapshot) => {
+                const cloudCourses = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data && data.courseId) cloudCourses.push(data);
+                });
+                if (cloudCourses.length > 0) {
+                    applyPersistentSnapshot({ customCourses: cloudCourses });
+                    populateCourseSelector();
+                    renderAll();
+                    saveAllToPersistentStorage();
+                }
+            }, (err) => {
+                console.warn("Ders senkronizasyon uyarısı:", err);
+            });
+
+            // 2. Kullanıcının eklediği soruları dinle ve yerel soruların hiçbirini silmeden birleştir
+            const questionsCol = collection(db, 'artifacts', appId, 'users', userId, 'custom_questions');
+            onSnapshot(questionsCol, (snapshot) => {
+                if (isSavingBatchToCloud) return;
+
+                const cloudQuestions = [];
+                snapshot.forEach(docSnap => {
+                    const qData = docSnap.data();
+                    if (qData && qData.id) {
+                        cloudQuestions.push(qData);
+                    }
+                });
+
+                if (cloudQuestions.length > 0) {
+                    applyPersistentSnapshot({ customQuestions: cloudQuestions });
+                    populateCourseSelector();
+                    renderAll();
+                    saveAllToPersistentStorage();
+                }
+            }, (err) => {
+                console.warn("Soru senkronizasyon uyarısı:", err);
+            });
+
+            // 3. Kullanıcının soru işaretleme ve öğrenilenler durumunu dinle
+            const stateDocRef = doc(db, 'artifacts', appId, 'users', userId, 'study_state', 'main');
+            onSnapshot(stateDocRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                let parsedStates = null;
+                if (data.questionStatesJson) {
+                    try {
+                        parsedStates = JSON.parse(data.questionStatesJson);
+                    } catch (e) {}
+                }
+                applyPersistentSnapshot({
+                    questionStates: parsedStates,
+                    currentCourseId: data.currentCourseId,
+                    currentStudyRound: data.currentStudyRound
+                });
+                populateCourseSelector();
+                renderAll();
+                saveAllToPersistentStorage();
+            }, (err) => {
+                console.warn("Çalışma durumu senkronizasyon uyarısı:", err);
+            });
+        }
+
+        window.saveCustomCourseToCloud = async function(courseId, courseName) {
+            if (!currentUser || !db) return;
+            try {
+                const courseRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'custom_courses', courseId);
+                await setDoc(courseRef, {
+                    courseId,
+                    courseName,
+                    createdAt: Date.now()
+                });
+            } catch (err) {}
+        };
+
+        window.saveCustomQuestionsBatchToCloud = async function(questionsArray) {
+            if (!currentUser || !db || !Array.isArray(questionsArray) || questionsArray.length === 0) return;
+            try {
+                isSavingBatchToCloud = true;
+                await Promise.all(questionsArray.map(q => {
+                    const qRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'custom_questions', q.id);
+                    return setDoc(qRef, {
+                        id: q.id,
+                        courseId: q.courseId,
+                        courseName: q.courseName,
+                        number: q.number,
+                        unit: q.unit || "Çıkmış Sınav Sorusu",
+                        text: q.text || "",
+                        extraHtml: q.extraHtml || "",
+                        options: q.options,
+                        correctAnswer: q.correctAnswer,
+                        explanation: q.explanation || "",
+                        createdAt: q.createdAt || Date.now()
+                    });
+                }));
+                isSavingBatchToCloud = false;
+            } catch (err) {
+                isSavingBatchToCloud = false;
+            }
+        };
+
+        window.saveUserProgressToCloud = async function() {
+            if (!currentUser || !db) return;
+            try {
+                const stateDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'study_state', 'main');
+                await setDoc(stateDocRef, {
+                    currentCourseId,
+                    currentStudyRound,
+                    questionStatesJson: JSON.stringify(questionStates),
+                    updatedAt: Date.now()
+                });
+            } catch (err) {}
+        };
+
+        initCloudStorage();
+    </script>
+</body>
+</html>
